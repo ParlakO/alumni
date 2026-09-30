@@ -63,3 +63,13 @@ def update_user_patch(user_id: int, user_update: UserUpdate):
             return existing_user
             
     raise HTTPException(status_code=404, detail="User not found")
+
+
+# Kullanıcı Silme (DELETE /api/users/{user_id})
+@app.delete("/api/users/{user_id}", status_code=204)
+def delete_user(user_id: int):
+    for index, existing_user in enumerate(users_db):
+        if existing_user.id == user_id:
+            users_db.pop(index)
+            return
+    raise HTTPException(status_code=404, detail="User not found")
