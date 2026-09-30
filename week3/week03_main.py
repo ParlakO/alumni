@@ -2,13 +2,18 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 
-# Uvicorn'un aradığı 'app' nesnesi burasıdır:
 app = FastAPI()
 
 class User(BaseModel):
     id: int
     name: str
     email: str
+    department: Optional[str] = None
+
+# Kullanıcı Güncelleme için (Alanların hepsi opsiyonel)
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
     department: Optional[str] = None
 
 users_db: List[User] = [
@@ -20,6 +25,7 @@ users_db: List[User] = [
 def health_check():
     return {"status": "ok", "message": "API is healthy and running"}
 
+# 1. Aşama: Tüm Kullanıcıları Listele (GET /api/users)
 @app.get("/api/users", response_model=List[User])
 def get_users():
     return users_db
@@ -31,3 +37,29 @@ def create_user(user: User):
             raise HTTPException(status_code=400, detail="User ID already exists")
     users_db.append(user)
     return user
+
+# 2. Aşama: Kullanıcı Güncelleme (PUT /api/users/{user_id}) - Tüm Alanları Yeniler
+@app.put("/api/users/{user_id}", response_model=User)
+def update_user_put(user_id: int, updated_user: User):
+    for index, existing_user in enumerate(users_db):
+        if existing_user.id == user_id:
+            users_db[index] = updated_user
+            return updated_user
+    raise HTTPException(status_code=404, detail="User not found")
+
+# 2. Aşama Alternatifi: Kısmi Güncelleme (PATCH /api/users/{user_id}) - Sadece Gönderilen Alanı Değiştirir
+@app.patch("/api/users/{user_id}", response_model=User)
+def update_user_patch(user_id: int, user_update: UserUpdate):
+    for existing_user in users_db:
+        if existing_user.id == user_id:
+            stored_user_data = existing_user.model_dump()
+            update_data = user_update.model_dump(exclude_unset=True)
+            stored_user_data.update(update_data)
+            
+            updated_user = User(**stored_user_data)
+            existing_user.name = updated_user.name
+            existing_user.email = updated_user.email
+            existing_user.department = updated_user.department
+            return existing_user
+            
+    raise HTTPException(status_code=404, detail="User not found")
