@@ -1,139 +1,121 @@
-# 🎓 Üniversite Mezun Takip Sistemi (Alumni Tracking System)
+# 🎓 Üniversite Mezun Takip Sistemi (Alumni Tracking System API)
 
-Bu proje, İstanbul Üniversitesi Web Programlama (YBSB3001) dersi kapsamında geliştirilmiş; mezun verilerini takip eden, **MVC (Model-View-Controller)** mimarisiyle yapılandırılmış, modern **Web Kullanıcı Arayüzü** ve **Docker** desteği sunan bir RESTful web uygulamasıdır.
+Bu proje, **İstanbul Üniversitesi Web Programlama (YBSB3001)** dersi kapsamında geliştirilmiş bir RESTful Mezun Takip Sistemi API'sidir. 
+
+Projenin temel odağı; **REST API mimarisi**, **HTTP metodları (GET, POST, PUT, PATCH, DELETE)**, **HTTP durum kodları**, **Pydantic ile veri doğrulama**, **MVC (Model-View-Controller) prensipleri** ve **Docker ile container ortamında çalıştırma** pratikleridir.
 
 ---
 
 ## 🌟 Key Features (Temel Özellikler)
 
-- **🏛️ MVC Mimari Deseni:** Model, View ve Controller katmanlarının modern standartlara uygun olarak net bir şekilde ayrılması.
-- **⚡ Yüksek Performanslı REST API:** Python FastAPI altyapısıyla asenkron, tip güvenli ve standart HTTP durum kodları (`200`, `201`, `204`, `400`, `404`) ile tam uyumlu uç noktalar.
-- **🎨 Modern Web Kullanıcı Arayüzü (Dashboard):**
-  - Gerçek zamanlı mezun listeleme, arama ve bölüm bazlı filtreleme.
-  - Tablo (Table) ve Kart (Grid Cards) görünüm geçişi.
-  - Dinamik modal pencereleri üzerinden Yeni Mezun Ekleme (POST), Tam Güncelleme (PUT) ve Kısmi Güncelleme (PATCH).
-  - Güvenli silme onay modalı (DELETE).
-  - Canlı REST API işlem konsolu ve otomatik sağlık kontrolü (Health Monitor).
-- **🐳 Docker & Docker Compose Entegrasyonu:** Tek bir komutla container ortamında ayağa kalkabilen, üretime ve geliştirmeye hazır yapı.
-- **📚 Otomatik İnteraktif API Dokümantasyonu:** Swagger UI (`/docs`) ve ReDoc (`/redoc`) üzerinden anında test edilebilirlik.
-- **🛡️ Veri Doğrulama ve Çakışma Koruması:** Pydantic ile gelen verilerin tip denetimi ve mükerrer ID engelleme mantığı.
-- **🔢 Sıralı Kullanıcı Listesi:** Mezun kayıtlarının ID'ye göre sıralı sunulması.
+- **🏛️ MVC Mimari Yapısı:** Model (Pydantic & In-Memory Store), View (JSON Yanıtları & Swagger UI) ve Controller (Route İşleyicileri) katmanlarının açık ayrımı.
+- **⚡ Kapsamlı REST API:** 
+  - Tam CRUD operasyonları (Oluşturma, Okuma, Tam/Kısmi Güncelleme, Silme).
+  - Standart HTTP durum kodları (`200 OK`, `201 Created`, `204 No Content`, `400 Bad Request`, `404 Not Found`, `422 Unprocessable Entity`).
+- **🛡️ Veri Doğrulama & Çakışma Yönetimi:**
+  - Pydantic şemaları ile istek gövdesi (request body) ve tip doğrulaması.
+  - POST isteklerinde mükerrer ID kontrolü (`400 User ID already exists`).
+- **🔢 Sıralı Kullanıcı Listeleme:** `GET /api/users` uç noktasında mezunların ID'ye göre sıralı (`ordered by ID`) döndürülmesi.
+- **📚 Etkileşimli API Dokümantasyonu:** Swagger UI (`/docs`) ve ReDoc (`/redoc`) üzerinden anında uç nokta testi.
+- **🐳 Docker Desteği:** `docker compose up --build` ile harici bağımlılık kurmadan tek komutla ayağa kaldırma.
+- **💻 Basit & Odaklı Mimari:** Okul projesi gereksinimlerine uygun olarak karmaşık veritabanı kurulumları yerine eğitim amaçlı In-Memory (bellek içi) veri yapısı.
 
 ---
 
 ## 🏗️ MVC (Model-View-Controller) Architecture
 
-Proje, yazılım mühendisliği prensiplerine uygun olarak üç temel katmana ayrılmıştır:
+Projede uygulanan MVC deseninin FastAPI ve REST API üzerindeki karşılığı:
 
 ```
                   ┌─────────────────────────────────────────┐
-                  │          İstemci / Tarayıcı            │
+                  │          İstemci (Client / Postman)     │
                   └──────────────────┬──────────────────────┘
-                                     │  HTTP Requests (GET, POST, PUT...)
+                                     │  HTTP İstekleri (GET, POST, PUT...)
                                      ▼
                   ┌─────────────────────────────────────────┐
                   │             CONTROLLER                  │
-                  │   FastAPI Route Handlers (main.py)      │
-                  │ - Endpoint routing                      │
-                  │ - Business logic & Validation           │
-                  │ - HTTP Status Code Management           │
+                  │        FastAPI Routes (main.py)         │
+                  │ - Endpoint yönlendirme                  │
+                  │ - İstek doğrulama ve iş mantığı         │
+                  │ - HTTP durum kodlarının belirlenmesi    │
                   └─────────────┬───────────────────────────┘
                                 │
         ┌───────────────────────┴───────────────────────┐
         ▼                                               ▼
 ┌──────────────────────────────┐        ┌──────────────────────────────┐
 │            MODEL             │        │             VIEW             │
-│   Pydantic & Veri Katmanı    │        │      Sunum Katmanı           │
-│   (models.py & users_db)     │        │ (index.html, style.css, JS)  │
-│ - UserBase, UserCreate       │        │ - Modern Web Dashboard       │
-│ - UserUpdate, UserPatch      │        │ - JSON API Yanıtları         │
-│ - In-Memory users_db Store   │        │ - Swagger /docs UI           │
+│   Veri & Şema Katmanı        │        │        Sunum Katmanı         │
+│   (models.py & users_db)     │        │     (JSON & Swagger UI)      │
+│ - UserBase, UserCreate       │        │ - JSON API Yanıtları         │
+│ - UserUpdate, UserPatch      │        │ - Swagger UI (/docs)         │
+│ - In-Memory `users_db` Liste │        │ - Hafif Web Arayüzü          │
 └──────────────────────────────┘        └──────────────────────────────┘
 ```
 
-### 1. Model (Veri Katmanı ve Doğrulama)
-- **Konum:** [`app/models.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/models.py)
-- **Görevi:** Veri şemalarını, alan tiplerini ve doğrulama kurallarını tanımlar.
-  - `UserBase`: Temel mezun alanlarını (`name`, `email`, `department`) tanımlar.
-  - `UserCreate`: Yeni mezun kaydı için giriş şeması (opsiyonel manuel ID desteği ile).
-  - `UserUpdate`: Tam güncelleme (PUT) için tüm alanların zorunlu olduğu şema.
-  - `UserPatch`: Kısmi güncelleme (PATCH) için opsiyonel alan şeması.
-  - `users_db`: Verilerin tutulduğu bellek içi (in-memory) veri deposu.
+### 1. Model (Veri ve Şema Katmanı)
+- **Dosya:** [`app/models.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/models.py)
+- **Görevi:** Verinin yapısını, kurallarını ve tiplerini belirler.
+  - `UserBase`: Ortak mezun alanları (`name`, `email`, `department`).
+  - `UserCreate`: Yeni mezun kaydı için Pydantic modeli (opsiyonel ID).
+  - `UserUpdate`: PUT ile tam güncelleme şeması (tüm alanlar zorunlu).
+  - `UserPatch`: PATCH ile kısmi güncelleme şeması (alanlar opsiyonel).
+  - `users_db`: Ders gereksinimine uygun in-memory (bellek içi) kullanıcı listesi.
 
 ### 2. View (Sunum Katmanı)
-- **Konum:** [`app/static/index.html`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/static/index.html), [`app/static/style.css`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/static/style.css), [`app/static/app.js`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/static/app.js) & JSON Yanıtları
-- **Görevi:** Kullanıcıya ve istemcilere sunulan arayüz ve veri formatını yönetir.
-  - **Web Dashboard:** Glassmorphism ve Dark Mode estetiğine sahip kullanıcı arayüzü.
-  - **JSON Serializer:** FastAPI `response_model` parametreleri ile modellerin standart JSON formatına dönüştürülüp istemciye iletilmesi.
-  - **Swagger UI (`/docs`):** API uç noktalarının görsel dokümantasyonu ve test paneli.
+- **Görevi:** İstemcinin aldığı görsel veya yapısal çıktıyı yönetir.
+  - **JSON Yanıtları:** FastAPI'nin `response_model` ile Pydantic modellerini otomatik serileştirip JSON olarak sunması.
+  - **Swagger UI (`/docs`):** API uç noktalarını listeleyen ve doğrudan test imkânı sunan etkileşimli dokümantasyon arayüzü.
+  - **Web Test Arayüzü:** Tarayıcı üzerinden yapılan istekler için temel arayüz.
 
 ### 3. Controller (Yönlendirme ve İş Mantığı Katmanı)
-- **Konum:** [`app/main.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/main.py)
-- **Görevi:** Gelen HTTP isteklerini yakalar, iş mantığını yürütür, Model katmanını günceller ve uygun HTTP durum kodlarıyla View katmanına yanıt döner.
-  - URL eşleştirmesi (Routing) ve parametre ayrıştırma (`user_id`, `name`, `a`, `b`).
-  - Hata yönetimi (ID çakışmasında `400 Bad Request`, bulunamadığında `404 Not Found`).
+- **Dosya:** [`app/main.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/main.py)
+- **Görevi:** HTTP isteklerini karşılar, URL parametrelerini çözer, Model üzerinde gerekli değişiklikleri yapar ve uygun HTTP yanıtını döner.
+  - Hata durumlarında `HTTPException` fırlatarak doğru durum kodlarını (`400`, `404`) üretir.
 
 ---
 
 ## 📌 API Endpoints (Uç Noktalar)
 
-Sistemde tanımlı tüm uç noktaların tam listesi:
-
-| HTTP Metodu | Uç Nokta (Endpoint) | Açıklama | Başarılı Yanıt (Status) | Hata Yanıtları |
+| HTTP Metodu | Uç Nokta (Endpoint) | Açıklama | Başarılı Yanıt Kodu | Hata Kodları |
 |:---|:---|:---|:---:|:---:|
-| `GET` | `/` | API welcome message (veya Web Arayüzü) | `200 OK` | - |
-| `GET` | `/hello` | Generic greeting | `200 OK` | - |
-| `GET` | `/hello/:name` | Named greeting | `200 OK` | - |
-| `GET` | `/sum/:a/:b` | Sum of two integers | `200 OK` | `422` (Geçersiz int) |
-| `GET` | `/about` | Project information | `200 OK` | - |
-| `GET` | `/api/health` | Health check | `200 OK` | - |
-| `POST` | `/api/users` | Create an in-memory user | `201 Created` | `400` (ID çakışması) |
+| `GET` | `/` | API welcome message | `200 OK` | - |
+| `GET` | `/hello` | Generic greeting (`{"message": "Hello, World!"}`) | `200 OK` | - |
+| `GET` | `/hello/:name` | Named greeting (`{"message": "Hello, :name!"}`) | `200 OK` | - |
+| `GET` | `/sum/:a/:b` | Sum of two integers (`{"a": a, "b": b, "sum": a + b}`) | `200 OK` | `422` (Geçersiz int) |
+| `GET` | `/about` | Project information (Ders, mimari ve proje bilgisi) | `200 OK` | - |
+| `GET` | `/api/health` | Health check (`{"status": "ok", ...}`) | `200 OK` | - |
+| `POST` | `/api/users` | Create an in-memory user (Mükerrer ID kontrolü) | `201 Created` | `400` (ID çakışması) |
 | `GET` | `/api/users` | List users ordered by ID | `200 OK` | - |
-| `GET` | `/api/users/:id` | Get one user | `200 OK` | `404` (Bulunamadı) |
+| `GET` | `/api/users/:id` | Get one user by ID | `200 OK` | `404` (Bulunamadı) |
 | `PUT` | `/api/users/:id` | Replace a user (Tam güncelleme) | `200 OK` | `404` (Bulunamadı) |
 | `PATCH` | `/api/users/:id` | Partially update a user (Kısmi güncelleme) | `200 OK` | `404` (Bulunamadı) |
-| `DELETE` | `/api/users/:id` | Delete a user (Kullanıcı silme) | `204 No Content` | `404` (Bulunamadı) |
+| `DELETE` | `/api/users/:id` | Delete a user by ID | `204 No Content` | `404` (Bulunamadı) |
 
 ---
 
-## 🚀 Docker ile Çalıştırma
+## 🚀 Çalıştırma Talimatları
 
-Uygulamayı Docker ile çalıştırmak için sisteminizde Docker'ın kurulu ve çalışır durumda olması yeterlidir:
+### Seçenek 1: Docker ile Çalıştırma (Önerilen)
 
-### 1. Docker Compose ile Başlatma:
+Projeyi container ortamında ayağa kaldırmak için:
+
 ```bash
 docker compose up --build
 ```
 
-Arka planda (detached modda) çalıştırmak için:
+Arka planda çalıştırmak için:
 ```bash
 docker compose up -d --build
 ```
 
-Durdurmak için:
+Kapatmak için:
 ```bash
 docker compose down
 ```
 
-### 2. Standart Docker CLI ile Başlatma:
-```bash
-# İmajı oluşturun
-docker build -t alumni-tracking-system .
+### Seçenek 2: Yerel Python ile Çalıştırma
 
-# Konteyneri başlatın (Port 3000)
-docker run -p 3000:3000 --name alumni_container alumni-tracking-system
-```
-
-Sunucu ayağa kalktıktan sonra aşağıdaki adreslerden erişebilirsiniz:
-- 🌐 **Web Arayüzü Portalı:** [http://localhost:3000](http://localhost:3000)
-- 📚 **Swagger API Dokümantasyonu:** [http://localhost:3000/docs](http://localhost:3000/docs)
-- 🩺 **Sağlık Kontrolü:** [http://localhost:3000/api/health](http://localhost:3000/api/health)
-
----
-
-## 💻 Yerel Geliştirme Ortamı (Docker Olmadan)
-
-Gereksinim: **Python 3.9+**
+Gereksinim: Python 3.9+
 
 1. Bağımlılıkları yükleyin:
    ```bash
@@ -144,98 +126,72 @@ Gereksinim: **Python 3.9+**
    ```bash
    python main.py
    ```
-   *(Varsayılan port `3000`'dir. `PORT` ortam değişkeni ile özelleştirilebilir.)*
+   *(Varsayılan port: 3000)*
 
-3. Birim testleri çalıştırın:
+3. Testleri çalıştırın:
    ```bash
    python test_api.py
    ```
 
 ---
 
-## 🧪 Örnek İstekler ve Yanıtlar (cURL)
+## 🧪 Örnek Test İstekleri (cURL)
 
-### 1. Genel ve Karşılama İstekleri:
 ```bash
-# Generic greeting
+# 1. Genel Karşılama ve Yardımcı Uç Noktalar
 curl http://localhost:3000/hello
-# Yanıt: {"message": "Hello, World!"}
-
-# Named greeting
 curl http://localhost:3000/hello/Osman
-# Yanıt: {"message": "Hello, Osman!"}
-
-# Sum of two integers
-curl http://localhost:3000/sum/15/27
-# Yanıt: {"a": 15, "b": 27, "sum": 42}
-
-# Project information
+curl http://localhost:3000/sum/10/25
 curl http://localhost:3000/about
-```
+curl http://localhost:3000/api/health
 
-### 2. Yeni Mezun Kullanıcı Oluşturma (POST):
-```bash
+# 2. Kullanıcı Ekleme (POST - 201 Created)
 curl -X POST http://localhost:3000/api/users \
   -H "Content-Type: application/json" \
-  -d '{"id": 3, "name": "Zeynep Kaya", "email": "zeynep@example.com", "department": "Industrial Engineering"}'
-```
-*HTTP Yanıtı:* `201 Created`
+  -d '{"id": 3, "name": "Ali Veli", "email": "ali@example.com", "department": "MIS"}'
 
-### 3. Kullanıcıları ID'ye Göre Sıralı Listeleme (GET):
-```bash
+# 3. Sıralı Kullanıcı Listesi (GET - 200 OK)
 curl http://localhost:3000/api/users
-```
 
-### 4. Tek Bir Kullanıcı Getirme (GET):
-```bash
-curl http://localhost:3000/api/users/1
-```
+# 4. Tek Kullanıcı Getirme (GET - 200 OK)
+curl http://localhost:3000/api/users/3
 
-### 5. Kullanıcı Güncelleme (PUT & PATCH):
-```bash
-# Tam Değiştirme (PUT)
+# 5. Tam Güncelleme (PUT - 200 OK)
 curl -X PUT http://localhost:3000/api/users/3 \
   -H "Content-Type: application/json" \
-  -d '{"name": "Zeynep Kaya Parlak", "email": "zeynep.p@example.com", "department": "Industrial Engineering"}'
+  -d '{"name": "Ali Veli Guncel", "email": "ali.guncel@example.com", "department": "Computer Engineering"}'
 
-# Kısmi Güncelleme (PATCH)
+# 6. Kısmi Güncelleme (PATCH - 200 OK)
 curl -X PATCH http://localhost:3000/api/users/3 \
   -H "Content-Type: application/json" \
-  -d '{"department": "AI & Data Engineering"}'
-```
+  -d '{"department": "Industrial Engineering"}'
 
-### 6. Kullanıcı Silme (DELETE):
-```bash
+# 7. Kullanıcı Silme (DELETE - 204 No Content)
 curl -X DELETE http://localhost:3000/api/users/3
 ```
-*HTTP Yanıtı:* `204 No Content`
 
 ---
 
-## 📁 Proje Dosya Yapısı
+## 📂 Proje Dizin Yapısı
 
 ```
 alumni/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py          # Controller: FastAPI route'ları ve iş mantığı
-│   ├── models.py        # Model: Pydantic veri modelleri ve doğrulama
-│   └── static/          # View: Web sunum katmanı
-│       ├── index.html   # Modern HTML5 arayüz sayfası
-│       ├── style.css    # Özel CSS tasarım sistemi (Dark/Glassmorphism)
-│       └── app.js       # Dinamik JS istemcisi ve canlı log konsolu
-├── Dockerfile           # Python 3.11 tabanlı Dockerfile
-├── docker-compose.yml   # Servis konteyner yapılandırması
-├── .dockerignore        # Gereksiz dosyaların imaja eklenmesini önler
-├── requirements.txt     # Python paket bağımlılıkları
+│   ├── main.py          # Controller: FastAPI route işleyicileri & REST endpoints
+│   ├── models.py        # Model: Pydantic veri şemaları & validasyon
+│   └── static/          # View: Statik dosyalar ve web arayüzü
+├── Dockerfile           # Docker container konfigürasyonu
+├── docker-compose.yml   # Docker Compose servis tanımı
+├── requirements.txt     # Python bağımlılıkları (FastAPI, Uvicorn, Pydantic)
 ├── main.py              # Yerel çalıştırma giriş noktası
-├── test_api.py          # 12 uç noktanın otomatik test paketi
-└── README.md            # Proje dokümantasyonu (MVC, Key Features, Endpoints)
+├── test_api.py          # Uç noktaları test eden birim test scripti
+└── README.md            # Proje dokümantasyonu
 ```
 
 ---
 
-## 👤 Hazırlayan
+## 👤 Proje Bilgileri
 - **Öğrenci:** Osman Parlak
 - **Ders:** YBSB3001 - Web Programlama
-- **Kurum:** İstanbul Üniversitesi
+- **Üniversite:** İstanbul Üniversitesi
