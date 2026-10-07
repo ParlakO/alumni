@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<!-- ===================================================================
+     WEEK 4: VIEW LAYER - layout.html (shared base template)
+     All users/* pages extend this layout.
+     =================================================================== -->
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} | Alumni Tracking System</title>
+  <meta name="description" content="Alumni Tracking System - Week 4 MVC view layer (UserController CRUD).">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 2rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { margin-bottom: 0.25rem; }
+    .subtitle { color: #94a3b8; margin-top: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.6rem; border-bottom: 1px solid #334155; vertical-align: middle; }
+    th { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; }
+    form.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    label { display: flex; flex-direction: column; font-size: 0.85rem; color: #94a3b8; gap: 0.3rem; }
+    input { padding: 0.55rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; }
+    .btn { display: inline-block; padding: 0.5rem 0.9rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; text-decoration: none; font-size: 0.85rem; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:hover { background: #4f46e5; }
+    .btn-warning { background: #b45309; color: #fff; }
+    .btn-patch { background: #7c3aed; color: #fff; }
+    .btn-danger { background: #b91c1c; color: #fff; }
+    .btn-light { background: #334155; color: #e2e8f0; }
+    .full { grid-column: span 2; }
+    .actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .actions form { margin: 0; }
+    .alert { padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+    .alert-error { background: #7f1d1d; color: #fecaca; }
+    .alert-success { background: #14532d; color: #bbf7d0; }
+    .badge { background: #312e81; color: #c7d2fe; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.8rem; }
+    code { color: #fbbf24; }
+    a { color: #a5b4fc; }
+    dl { display: grid; grid-template-columns: 140px 1fr; gap: 0.5rem; }
+    dt { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>🎓 {{ title }}</h1>
+    <p class="subtitle">Week 4 · MVC View Layer · UserController</p>
+
+    {% if error %}<div class="alert alert-error" id="errorAlert">{{ error }}</div>{% endif %}
+    {% if success %}<div class="alert alert-success" id="successAlert">{{ success }}</div>{% endif %}
+
+    {% block content %}{% endblock %}
+
+    <p><a href="/users">Mezun Listesi</a> · <a href="/docs">Swagger</a> · <a href="/api/users">JSON (/api/users)</a></p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{# ===================================================================
+   WEEK 4: VIEW - users/not_found.html
+     Rendered with 404 when a user id does not exist.
+   =================================================================== #}
+{% extends "layout.html" %}
+{% block content %}
+
+<section class="card" id="notFound">
+  <h2>404 - Mezun bulunamadı</h2>
+  <p>#{{ user_id }} numaralı mezun kaydı yok.</p>
+  <a class="btn btn-light" href="/users">Listeye Dön</a>
+</section>
+
+{% endblock %}

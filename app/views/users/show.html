@@ -1,0 +1,26 @@
+{# ===================================================================
+   WEEK 4: VIEW - users/show.html
+     GET /users/{id} -> show one user
+   =================================================================== #}
+{% extends "layout.html" %}
+{% block content %}
+
+<section class="card">
+  <h2>Mezun Detayı <code>GET /users/{{ user.id }}</code></h2>
+  <dl id="userDetail">
+    <dt>ID</dt><dd>#{{ user.id }}</dd>
+    <dt>Ad Soyad</dt><dd>{{ user.name }}</dd>
+    <dt>E-posta</dt><dd>{{ user.email }}</dd>
+    <dt>Bölüm</dt><dd>{{ user.department }}</dd>
+  </dl>
+  <div class="actions">
+    <a class="btn btn-warning" id="editUserBtn" href="/users/{{ user.id }}/edit">Düzenle</a>
+    <form method="post" action="/users/{{ user.id }}?_method=DELETE"
+          onsubmit="return confirm('#{{ user.id }} silinsin mi?');">
+      <button type="submit" class="btn btn-danger" id="deleteUserBtn">Sil</button>
+    </form>
+    <a class="btn btn-light" href="/users">Listeye Dön</a>
+  </div>
+</section>
+
+{% endblock %}

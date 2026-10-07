@@ -1,10 +1,11 @@
 import asyncio
-from app.models import UserModel, UserCreate, UserUpdate, UserPatch
+from app.models import UserModel, UserCreate, UserUpdate, UserPatch, user_model
 from app.controllers.api_user_controller import (
     get_api_users, get_api_user_by_id, create_api_user, update_api_user, patch_api_user, delete_api_user
 )
 from app.controllers.user_controller import (
-    list_users_view, create_user_view, get_user_by_id, update_user, patch_user, delete_user
+    list_users_view, create_user_view, show_user_view, edit_user_view,
+    update_user_view, patch_user_view, delete_user_view
 )
 from app.main import get_hello, get_hello_name, get_sum, get_about, health_check
 from fastapi import HTTPException
@@ -91,41 +92,56 @@ async def main():
     print("PASS: [ApiUserController] DELETE /api/users/20 -> 204 No Content")
 
     # -------------------------------------------------------------
-    # 3. Test UserController (/users) - Week 4 View Layer
+    # 3. Test UserController (/users) - Week 4 Full CRUD with Views
     # -------------------------------------------------------------
     print("\n--- 3. Testing UserController (/users) ---")
-    page = await list_users_view(make_request())
+    req = make_request()
+
+    page = await list_users_view(req)
     html = page.body.decode()
     assert page.status_code == 200 and "Osman Parlak" in html and "<table" in html
-    print("PASS: [UserController] GET /users -> HTML list view rendered")
+    print("PASS: [UserController] GET /users -> list view")
 
-    u2 = await get_user_by_id(2)
-    assert u2["id"] == 2
-    print("PASS: [UserController] GET /users/2 -> Ahmet Yilmaz")
-
-    created = await create_user_view(make_request("POST"), name="Web User", email="web@example.com", department="IE", id="30")
+    created = await create_user_view(req, name="Web User", email="web@example.com", department="IE", id="30")
     assert created.status_code == 303 and created.headers["location"] == "/users?created=30"
-    print("PASS: [UserController] POST /users (form) -> 303 redirect to /users")
+    print("PASS: [UserController] POST /users -> 303 /users")
 
-    dup = await create_user_view(make_request("POST"), name="Dup", email="dup@example.com", department="IE", id="30")
+    dup = await create_user_view(req, name="Dup", email="dup@example.com", department="IE", id="30")
     assert dup.status_code == 400 and "User ID already exists" in dup.body.decode()
-    print("PASS: [UserController] POST /users duplicate ID -> 400 with error in view")
+    print("PASS: [UserController] POST /users duplicate ID -> 400 view")
 
-    bad = await create_user_view(make_request("POST"), name="X", email="x@example.com", department="IE", id="")
-    assert bad.status_code == 400
-    print("PASS: [UserController] POST /users invalid name -> 400 with error in view")
+    show = await show_user_view(req, 30)
+    assert show.status_code == 200 and "Web User" in show.body.decode()
+    print("PASS: [UserController] GET /users/30 -> show view")
 
-    put_u = await update_user(30, UserUpdate(name="Web User Updated", email="web@example.com", department="IE"))
-    assert put_u["name"] == "Web User Updated"
-    print("PASS: [UserController] PUT /users/30 -> OK")
+    missing = await show_user_view(req, 999)
+    assert missing.status_code == 404
+    print("PASS: [UserController] GET /users/999 -> 404 view")
 
-    patch_u = await patch_user(30, UserPatch(department="Industrial Eng"))
-    assert patch_u["department"] == "Industrial Eng"
-    print("PASS: [UserController] PATCH /users/30 -> OK")
+    edit = await edit_user_view(req, 30)
+    assert edit.status_code == 200 and 'value="Web User"' in edit.body.decode()
+    print("PASS: [UserController] GET /users/30/edit -> edit form pre-filled")
 
-    del_res = await delete_user(30)
-    assert del_res.status_code == 204
-    print("PASS: [UserController] DELETE /users/30 -> 204 No Content")
+    put_ok = await update_user_view(req, 30, name="Web User Updated", email="web@example.com", department="IE")
+    assert put_ok.status_code == 303 and user_model.get_by_id(30)["name"] == "Web User Updated"
+    print("PASS: [UserController] PUT /users/30 -> 303, replaced")
+
+    put_bad = await update_user_view(req, 30, name="Only Name", email="", department="")
+    assert put_bad.status_code == 400
+    print("PASS: [UserController] PUT /users/30 missing fields -> 400 view")
+
+    patch_ok = await patch_user_view(req, 30, name="", email="", department="Industrial Eng")
+    u30 = user_model.get_by_id(30)
+    assert patch_ok.status_code == 303 and u30["department"] == "Industrial Eng" and u30["name"] == "Web User Updated"
+    print("PASS: [UserController] PATCH /users/30 -> 303, only department changed")
+
+    del_ok = await delete_user_view(req, 30)
+    assert del_ok.status_code == 303 and user_model.get_by_id(30) is None
+    print("PASS: [UserController] DELETE /users/30 -> 303 /users")
+
+    del_missing = await delete_user_view(req, 30)
+    assert del_missing.status_code == 404
+    print("PASS: [UserController] DELETE /users/30 again -> 404 view")
 
     # -------------------------------------------------------------
     # 4. Test Week 1 Core Endpoints

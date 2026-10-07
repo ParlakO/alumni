@@ -1,4 +1,5 @@
 import os
+from urllib.parse import parse_qs
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -35,7 +36,7 @@ app = FastAPI(
         },
         {
             "name": "Users (UserController)",
-            "description": "Week 4 (View Layer): `GET /users` mezun listesini HTML olarak render eder, `POST /users` HTML formundan kullanıcı oluşturup `/users`'a yönlendirir. Diğer `/users/{id}` rotaları JSON döner."
+            "description": "Week 4 (View Layer): `/users` üzerinde tüm CRUD işlemleri HTML sayfaları ile yapılır (list, show, create, edit, PUT, PATCH, DELETE). HTML formları PUT/PATCH/DELETE için `POST ...?_method=PUT|PATCH|DELETE` kullanır."
         }
     ]
 )
@@ -48,6 +49,31 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ===================================================================
+# WEEK 4: Method Override Middleware (for the View layer)
+# HTML forms only support GET/POST. A form can send
+#   POST /users/5?_method=PUT | PATCH | DELETE
+# and this middleware rewrites the request method before routing,
+# so UserController can use real PUT/PATCH/DELETE routes.
+# ===================================================================
+class MethodOverrideMiddleware:
+    ALLOWED = {"PUT", "PATCH", "DELETE"}
+
+    def __init__(self, asgi_app):
+        self.app = asgi_app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and scope["method"] == "POST":
+            query = parse_qs(scope.get("query_string", b"").decode())
+            override = (query.get("_method") or [""])[0].upper()
+            if override in self.ALLOWED:
+                scope = dict(scope, method=override)
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(MethodOverrideMiddleware)
 
 # Path to static frontend files
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

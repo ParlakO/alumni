@@ -1,17 +1,26 @@
 import os
 from typing import Optional
-from fastapi import APIRouter, Form, HTTPException, Request, Response, status
+from fastapi import APIRouter, Form, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
-from app.models import User, UserCreate, UserUpdate, UserPatch, user_model
+from app.models import UserCreate, UserUpdate, UserPatch, user_model
 
 # ===================================================================
-# WEEK 4: UserController (/users)
-# Web controller that uses the VIEW LAYER (Jinja2 templates).
-#   GET  /users -> listing  (renders app/views/users/index.html)
-#   POST /users -> creating (HTML form submit -> redirect to GET /users)
+# WEEK 4: UserController (/users) - Full CRUD with the VIEW LAYER
+#
+#   GET    /users             -> index   (list + create form)     users/index.html
+#   POST   /users             -> create  (form submit)            -> 303 /users
+#   GET    /users/{id}        -> show    (one user)               users/show.html
+#   GET    /users/{id}/edit   -> edit    (edit form)              users/edit.html
+#   PUT    /users/{id}        -> replace (all fields required)    -> 303 /users/{id}
+#   PATCH  /users/{id}        -> partial (empty fields ignored)   -> 303 /users/{id}
+#   DELETE /users/{id}        -> delete                           -> 303 /users
+#
+# HTML forms can't send PUT/PATCH/DELETE, so the views submit
+# POST /users/{id}?_method=PUT|PATCH|DELETE (see MethodOverrideMiddleware in main.py).
+# Data always goes through the Model (UserModel), output through the View (Jinja2).
 # ===================================================================
 
 VIEWS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "views")
@@ -23,102 +32,159 @@ router = APIRouter(
 )
 
 
-def _render_users_page(request: Request, status_code: int = 200, error: Optional[str] = None,
-                       success: Optional[str] = None, form: Optional[dict] = None) -> HTMLResponse:
-    """Helper: Controller asks Model for data, then passes it to the View."""
-    return templates.TemplateResponse(
-        request,
-        "users/index.html",
-        {
-            "title": "Mezun Listesi",
-            "users": user_model.get_all(order_by_id=True),
-            "error": error,
-            "success": success,
-            "form": form or {},
-        },
-        status_code=status_code,
-    )
+# -------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------
+def _render(request: Request, template: str, context: dict, status_code: int = 200) -> HTMLResponse:
+    base = {"error": None, "success": None, "form": {}}
+    base.update(context)
+    return templates.TemplateResponse(request, template, base, status_code=status_code)
 
 
-# --- WEEK 4 (View): GET /users => listing ---
-@router.get("", response_class=HTMLResponse, summary="[UserController] List users (HTML view)")
-async def list_users_view(request: Request, created: Optional[int] = None):
-    """
-    [Week 4 - View Layer] Renders the users list page (users/index.html), ordered by ID.
-    """
-    success = f"Mezun #{created} başarıyla oluşturuldu." if created is not None else None
-    return _render_users_page(request, success=success)
+def _render_index(request: Request, status_code: int = 200, **context) -> HTMLResponse:
+    context.setdefault("title", "Mezun Listesi")
+    context["users"] = user_model.get_all(order_by_id=True)
+    return _render(request, "users/index.html", context, status_code)
 
 
-# --- WEEK 4 (View): POST /users => creating ---
-@router.post("", response_class=HTMLResponse, summary="[UserController] Create user (HTML form)")
+def _render_not_found(request: Request, user_id: int) -> HTMLResponse:
+    return _render(request, "users/not_found.html",
+                   {"title": "Mezun Bulunamadı", "user_id": user_id}, status.HTTP_404_NOT_FOUND)
+
+
+def _validation_message(e: ValidationError) -> str:
+    first = e.errors()[0]
+    field = first["loc"][-1] if first.get("loc") else "form"
+    return f"Geçersiz alan '{field}': {first['msg']}"
+
+
+def _redirect(url: str) -> RedirectResponse:
+    # 303 See Other: the browser follows with GET (Post/Redirect/Get pattern)
+    return RedirectResponse(url=url, status_code=status.HTTP_303_SEE_OTHER)
+
+
+# -------------------------------------------------------------------
+# READ (list) - GET /users
+# -------------------------------------------------------------------
+@router.get("", response_class=HTMLResponse, summary="[UserController] List users (view)")
+async def list_users_view(request: Request, created: Optional[int] = None, deleted: Optional[int] = None):
+    """[Week 4 - View] Renders users/index.html with all users ordered by ID."""
+    success = None
+    if created is not None:
+        success = f"Mezun #{created} başarıyla oluşturuldu."
+    elif deleted is not None:
+        success = f"Mezun #{deleted} silindi."
+    return _render_index(request, success=success)
+
+
+# -------------------------------------------------------------------
+# CREATE - POST /users
+# -------------------------------------------------------------------
+@router.post("", response_class=HTMLResponse, summary="[UserController] Create user (form)")
 async def create_user_view(
     request: Request,
-    name: str = Form(...),
-    email: str = Form(...),
-    department: str = Form(...),
+    name: str = Form(""),
+    email: str = Form(""),
+    department: str = Form(""),
     id: Optional[str] = Form(None),
 ):
-    """
-    [Week 4 - View Layer] Handles the HTML form submit.
-    Success -> 303 redirect to GET /users (Post/Redirect/Get pattern).
-    Failure -> re-renders the view with an error message (400).
-    """
+    """[Week 4 - View] Creates a user from the form. Success -> 303 /users, error -> 400 + view."""
     form = {"id": id, "name": name, "email": email, "department": department}
-
     try:
         user_id = int(id) if id not in (None, "") else None
-        user_in = UserCreate(id=user_id, name=name, email=email, department=department)
-        new_user = user_model.create(user_in)
+        new_user = user_model.create(UserCreate(id=user_id, name=name, email=email, department=department))
     except ValidationError as e:
-        first = e.errors()[0]
-        field = first["loc"][-1] if first.get("loc") else "form"
-        return _render_users_page(request, status_code=400, error=f"Geçersiz alan '{field}': {first['msg']}", form=form)
+        return _render_index(request, status.HTTP_400_BAD_REQUEST, error=_validation_message(e), form=form)
     except ValueError as e:
         # int() conversion error or "User ID already exists"
-        return _render_users_page(request, status_code=400, error=str(e), form=form)
+        return _render_index(request, status.HTTP_400_BAD_REQUEST, error=str(e), form=form)
+    return _redirect(f"/users?created={new_user['id']}")
 
-    return RedirectResponse(url=f"/users?created={new_user['id']}", status_code=status.HTTP_303_SEE_OTHER)
 
-
-# ===================================================================
-# WEEK 3 & 4: Remaining JSON CRUD routes on /users (via UserModel)
-# ===================================================================
-
-# --- WEEK 2: GET /users/:id (Get one user) ---
-@router.get("/{user_id}", response_model=User, summary="[UserController] Get one user by ID")
-async def get_user_by_id(user_id: int):
-    """[Week 2 & 4] Fetches a single user by ID using UserModel.get_by_id()."""
+# -------------------------------------------------------------------
+# EDIT FORM - GET /users/{id}/edit   (declared before /{user_id})
+# -------------------------------------------------------------------
+@router.get("/{user_id}/edit", response_class=HTMLResponse, summary="[UserController] Edit form (view)")
+async def edit_user_view(request: Request, user_id: int):
+    """[Week 4 - View] Renders users/edit.html pre-filled with the user's data."""
     user = user_model.get_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+        return _render_not_found(request, user_id)
+    return _render(request, "users/edit.html",
+                   {"title": f"Mezun Düzenle #{user_id}", "user_id": user_id, "form": user})
 
 
-# --- WEEK 3: PUT /users/:id (Replace user) ---
-@router.put("/{user_id}", response_model=User, summary="[UserController] Replace user (Full Update)")
-async def update_user(user_id: int, user_in: UserUpdate):
-    """[Week 3 & 4] Completely replaces user fields using UserModel.update()."""
-    updated_user = user_model.update(user_id, user_in)
-    if not updated_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return updated_user
+# -------------------------------------------------------------------
+# READ (one) - GET /users/{id}
+# -------------------------------------------------------------------
+@router.get("/{user_id}", response_class=HTMLResponse, summary="[UserController] Show user (view)")
+async def show_user_view(request: Request, user_id: int, updated: Optional[str] = None):
+    """[Week 4 - View] Renders users/show.html for a single user."""
+    user = user_model.get_by_id(user_id)
+    if not user:
+        return _render_not_found(request, user_id)
+    success = f"Mezun #{user_id} güncellendi ({updated})." if updated else None
+    return _render(request, "users/show.html",
+                   {"title": f"Mezun #{user_id}", "user": user, "success": success})
 
 
-# --- WEEK 3: PATCH /users/:id (Partially update user) ---
-@router.patch("/{user_id}", response_model=User, summary="[UserController] Partially update user")
-async def patch_user(user_id: int, user_in: UserPatch):
-    """[Week 3 & 4] Partially updates user fields using UserModel.patch()."""
-    patched_user = user_model.patch(user_id, user_in)
-    if not patched_user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return patched_user
+# -------------------------------------------------------------------
+# UPDATE (replace) - PUT /users/{id}
+# -------------------------------------------------------------------
+@router.put("/{user_id}", response_class=HTMLResponse, summary="[UserController] Replace user (form, PUT)")
+async def update_user_view(
+    request: Request,
+    user_id: int,
+    name: str = Form(""),
+    email: str = Form(""),
+    department: str = Form(""),
+):
+    """[Week 4 - View] Full replacement; all fields required. Success -> 303 /users/{id}."""
+    form = {"name": name, "email": email, "department": department}
+    if not user_model.exists_by_id(user_id):
+        return _render_not_found(request, user_id)
+    try:
+        user_model.update(user_id, UserUpdate(name=name, email=email, department=department))
+    except ValidationError as e:
+        return _render(request, "users/edit.html",
+                       {"title": f"Mezun Düzenle #{user_id}", "user_id": user_id, "form": form,
+                        "error": "PUT tüm alanları ister. " + _validation_message(e)},
+                       status.HTTP_400_BAD_REQUEST)
+    return _redirect(f"/users/{user_id}?updated=PUT")
 
 
-# --- WEEK 3: DELETE /users/:id (Delete user) ---
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, summary="[UserController] Delete user")
-async def delete_user(user_id: int):
-    """[Week 3 & 4] Deletes user by ID using UserModel.delete()."""
+# -------------------------------------------------------------------
+# UPDATE (partial) - PATCH /users/{id}
+# -------------------------------------------------------------------
+@router.patch("/{user_id}", response_class=HTMLResponse, summary="[UserController] Partially update user (form, PATCH)")
+async def patch_user_view(
+    request: Request,
+    user_id: int,
+    name: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    department: Optional[str] = Form(None),
+):
+    """[Week 4 - View] Partial update; empty fields are ignored. Success -> 303 /users/{id}."""
+    form = {"name": name, "email": email, "department": department}
+    if not user_model.exists_by_id(user_id):
+        return _render_not_found(request, user_id)
+    try:
+        changes = UserPatch(**{k: v for k, v in form.items() if v not in (None, "")})
+        user_model.patch(user_id, changes)
+    except ValidationError as e:
+        return _render(request, "users/edit.html",
+                       {"title": f"Mezun Düzenle #{user_id}", "user_id": user_id, "form": form,
+                        "error": _validation_message(e)},
+                       status.HTTP_400_BAD_REQUEST)
+    return _redirect(f"/users/{user_id}?updated=PATCH")
+
+
+# -------------------------------------------------------------------
+# DELETE - DELETE /users/{id}
+# -------------------------------------------------------------------
+@router.delete("/{user_id}", response_class=HTMLResponse, summary="[UserController] Delete user (form, DELETE)")
+async def delete_user_view(request: Request, user_id: int):
+    """[Week 4 - View] Deletes the user. Success -> 303 /users, missing -> 404 view."""
     if not user_model.delete(user_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return _render_not_found(request, user_id)
+    return _redirect(f"/users?deleted={user_id}")

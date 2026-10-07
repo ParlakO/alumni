@@ -118,15 +118,16 @@ Proje, ders müfredatındaki 4 haftalık kazanımları açık ve modüler biçim
 | `PATCH` | `/api/users/:id` | Partially update a user (Kısmi güncelleme) | `200 OK` | `404 Not Found` |
 | `DELETE` | `/api/users/:id` | Delete a user by ID | `204 No Content` | `404 Not Found` |
 
-### 🔹 UserController Uç Noktaları (`/users` - Week 4)
+### 🔹 UserController Uç Noktaları (`/users` - Week 4 MVC View Layer)
 | HTTP Metodu | Uç Nokta | Açıklama | Başarılı Yanıt | Hata Yanıtları |
 |:---|:---|:---|:---:|:---:|
-| `GET` | `/users` | **Listing** – mezun listesini HTML sayfası olarak render eder (View) | `200 OK` (HTML) | - |
-| `GET` | `/users/:id` | Get one user by ID | `200 OK` | `404 Not Found` |
-| `POST` | `/users` | **Creating** – HTML formundan (`application/x-www-form-urlencoded`) kullanıcı oluşturur | `303 See Other` → `/users` | `400` (HTML, hata mesajlı) |
-| `PUT` | `/users/:id` | Replace user (Tam güncelleme) | `200 OK` | `404 Not Found` |
-| `PATCH` | `/users/:id` | Partially update user (Kısmi güncelleme) | `200 OK` | `404 Not Found` |
-| `DELETE` | `/users/:id` | Delete user by ID | `204 No Content` | `404 Not Found` |
+| `GET` | `/users` | **Listing** – Tüm mezunları listeler ve ekleme formu sunar (`users/index.html`) | `200 OK` (HTML) | - |
+| `POST` | `/users` | **Creating** – Formdan yeni mezun ekler (`UserModel.create()`) ve yönlendirir | `303 See Other` → `/users` | `400` (Hata mesajlı form) |
+| `GET` | `/users/:id` | **Show** – Tek bir mezunun detay sayfasını gösterir (`users/show.html`) | `200 OK` (HTML) | `404` (`users/not_found.html`) |
+| `GET` | `/users/:id/edit` | **Edit Form** – Mezun güncelleme formunu açar (`users/edit.html`) | `200 OK` (HTML) | `404` (`users/not_found.html`) |
+| `PUT` | `/users/:id` | **Full Update** – Tüm alanları günceller (`_method=PUT` formu) | `303 See Other` → `/users/:id` | `400` (Eksik alan) / `404` |
+| `PATCH` | `/users/:id` | **Partial Update** – Sadece dolu alanları günceller (`_method=PATCH` formu) | `303 See Other` → `/users/:id` | `400` / `404` |
+| `DELETE` | `/users/:id` | **Delete** – Mezunu siler (`_method=DELETE` formu) | `303 See Other` → `/users` | `404` (`users/not_found.html`) |
 
 ---
 

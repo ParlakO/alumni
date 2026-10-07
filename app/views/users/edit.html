@@ -1,0 +1,37 @@
+{# ===================================================================
+   WEEK 4: VIEW - users/edit.html
+     GET /users/{id}/edit -> edit form
+     Two submit buttons:
+       PUT   (POST ?_method=PUT)   -> replace, all fields required
+       PATCH (POST ?_method=PATCH) -> partial, empty fields are ignored
+   =================================================================== #}
+{% extends "layout.html" %}
+{% block content %}
+
+<section class="card">
+  <h2>Mezun Düzenle <code>#{{ user_id }}</code></h2>
+  <p class="subtitle">
+    <strong>PUT</strong>: tüm alanlar zorunlu (tam değiştirme) ·
+    <strong>PATCH</strong>: sadece doldurulan alanlar güncellenir
+  </p>
+  <form method="post" action="/users/{{ user_id }}?_method=PUT" class="grid" id="editUserForm">
+    <label>Ad Soyad
+      <input type="text" name="name" id="editNameInput" value="{{ form.name or '' }}">
+    </label>
+    <label>E-posta
+      <input type="email" name="email" id="editEmailInput" value="{{ form.email or '' }}">
+    </label>
+    <label class="full">Bölüm
+      <input type="text" name="department" id="editDepartmentInput" value="{{ form.department or '' }}">
+    </label>
+    <div class="actions full">
+      <button type="submit" class="btn btn-warning" id="putUserBtn"
+              formaction="/users/{{ user_id }}?_method=PUT">Kaydet (PUT)</button>
+      <button type="submit" class="btn btn-patch" id="patchUserBtn"
+              formaction="/users/{{ user_id }}?_method=PATCH">Kısmi Kaydet (PATCH)</button>
+      <a class="btn btn-light" href="/users/{{ user_id }}">İptal</a>
+    </div>
+  </form>
+</section>
+
+{% endblock %}
