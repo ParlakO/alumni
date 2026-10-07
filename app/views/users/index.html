@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<!-- ===================================================================
+     WEEK 4: VIEW LAYER - users/index.html
+     Rendered by UserController:
+       GET  /users -> list users
+       POST /users -> create user (form submit), then redirect to GET /users
+     =================================================================== -->
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} | Alumni Tracking System</title>
+  <meta name="description" content="Mezun listesi ve yeni mezun ekleme sayfası (Week 4 - View Layer).">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 2rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { margin-bottom: 0.25rem; }
+    .subtitle { color: #94a3b8; margin-top: 0; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 0.6rem; border-bottom: 1px solid #334155; }
+    th { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; }
+    form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    label { display: flex; flex-direction: column; font-size: 0.85rem; color: #94a3b8; gap: 0.3rem; }
+    input { padding: 0.55rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; }
+    button { grid-column: span 2; padding: 0.7rem; border: none; border-radius: 6px; background: #6366f1; color: #fff; font-weight: 600; cursor: pointer; }
+    button:hover { background: #4f46e5; }
+    .alert { padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+    .alert-error { background: #7f1d1d; color: #fecaca; }
+    .alert-success { background: #14532d; color: #bbf7d0; }
+    .badge { background: #312e81; color: #c7d2fe; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.8rem; }
+    a { color: #a5b4fc; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>🎓 {{ title }}</h1>
+    <p class="subtitle">Week 4 · MVC View Layer · UserController (<code>GET /users</code>, <code>POST /users</code>)</p>
+
+    {% if error %}
+      <div class="alert alert-error" id="errorAlert">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+      <div class="alert alert-success" id="successAlert">{{ success }}</div>
+    {% endif %}
+
+    <!-- POST /users => creating -->
+    <section class="card">
+      <h2>Yeni Mezun Ekle</h2>
+      <form method="post" action="/users" id="createUserForm">
+        <label>ID (opsiyonel)
+          <input type="number" name="id" id="userIdInput" min="1" value="{{ form.id or '' }}">
+        </label>
+        <label>Ad Soyad *
+          <input type="text" name="name" id="userNameInput" required minlength="2" value="{{ form.name or '' }}">
+        </label>
+        <label>E-posta *
+          <input type="email" name="email" id="userEmailInput" required value="{{ form.email or '' }}">
+        </label>
+        <label>Bölüm *
+          <input type="text" name="department" id="userDepartmentInput" required minlength="2" value="{{ form.department or '' }}">
+        </label>
+        <button type="submit" id="createUserBtn">Kaydet (POST /users)</button>
+      </form>
+    </section>
+
+    <!-- GET /users => listing -->
+    <section class="card">
+      <h2>Mezun Listesi <span class="badge">{{ users|length }} kayıt</span></h2>
+      {% if users %}
+        <table id="usersTable">
+          <thead>
+            <tr><th>ID</th><th>Ad Soyad</th><th>E-posta</th><th>Bölüm</th></tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+              <tr>
+                <td>#{{ user.id }}</td>
+                <td>{{ user.name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.department }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p>Henüz kayıtlı mezun yok.</p>
+      {% endif %}
+    </section>
+
+    <p><a href="/docs">Swagger API Dokümanları</a> · <a href="/api/users">JSON (/api/users)</a></p>
+  </main>
+</body>
+</html>

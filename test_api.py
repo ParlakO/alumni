@@ -4,10 +4,16 @@ from app.controllers.api_user_controller import (
     get_api_users, get_api_user_by_id, create_api_user, update_api_user, patch_api_user, delete_api_user
 )
 from app.controllers.user_controller import (
-    get_users, get_user_by_id, create_user, update_user, patch_user, delete_user
+    list_users_view, create_user_view, get_user_by_id, update_user, patch_user, delete_user
 )
 from app.main import get_hello, get_hello_name, get_sum, get_about, health_check
 from fastapi import HTTPException
+from starlette.requests import Request
+
+
+def make_request(method: str = "GET", path: str = "/users") -> Request:
+    """Minimal ASGI request so view handlers can be called directly."""
+    return Request({"type": "http", "method": method, "path": path, "headers": [], "query_string": b""})
 
 async def main():
     print("=============================================================")
@@ -85,20 +91,29 @@ async def main():
     print("PASS: [ApiUserController] DELETE /api/users/20 -> 204 No Content")
 
     # -------------------------------------------------------------
-    # 3. Test UserController (/users)
+    # 3. Test UserController (/users) - Week 4 View Layer
     # -------------------------------------------------------------
     print("\n--- 3. Testing UserController (/users) ---")
-    users = await get_users()
-    assert len(users) >= 2
-    print(f"PASS: [UserController] GET /users -> {len(users)} users")
+    page = await list_users_view(make_request())
+    html = page.body.decode()
+    assert page.status_code == 200 and "Osman Parlak" in html and "<table" in html
+    print("PASS: [UserController] GET /users -> HTML list view rendered")
 
     u2 = await get_user_by_id(2)
     assert u2["id"] == 2
     print("PASS: [UserController] GET /users/2 -> Ahmet Yilmaz")
 
-    new_u = await create_user(UserCreate(id=30, name="Web User", email="web@example.com", department="IE"))
-    assert new_u["id"] == 30
-    print("PASS: [UserController] POST /users -> OK")
+    created = await create_user_view(make_request("POST"), name="Web User", email="web@example.com", department="IE", id="30")
+    assert created.status_code == 303 and created.headers["location"] == "/users?created=30"
+    print("PASS: [UserController] POST /users (form) -> 303 redirect to /users")
+
+    dup = await create_user_view(make_request("POST"), name="Dup", email="dup@example.com", department="IE", id="30")
+    assert dup.status_code == 400 and "User ID already exists" in dup.body.decode()
+    print("PASS: [UserController] POST /users duplicate ID -> 400 with error in view")
+
+    bad = await create_user_view(make_request("POST"), name="X", email="x@example.com", department="IE", id="")
+    assert bad.status_code == 400
+    print("PASS: [UserController] POST /users invalid name -> 400 with error in view")
 
     put_u = await update_user(30, UserUpdate(name="Web User Updated", email="web@example.com", department="IE"))
     assert put_u["name"] == "Web User Updated"

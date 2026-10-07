@@ -35,7 +35,7 @@ app = FastAPI(
         },
         {
             "name": "Users (UserController)",
-            "description": "Week 4: `/users` rotasına bağlı, UserModel üzerinden CRUD işlemlerini yürüten kullanıcı kontrolcüsü."
+            "description": "Week 4 (View Layer): `GET /users` mezun listesini HTML olarak render eder, `POST /users` HTML formundan kullanıcı oluşturup `/users`'a yönlendirir. Diğer `/users/{id}` rotaları JSON döner."
         }
     ]
 )

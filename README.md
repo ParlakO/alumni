@@ -13,7 +13,7 @@ Proje, ders müfredatındaki 4 haftalık kazanımları açık ve modüler biçim
 | **Week 1** | Temel Yönlendirme (Routing) & Karşılama | [`app/main.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/main.py) | `GET /`, `GET /hello`, `GET /hello/:name`, `GET /sum/:a/:b`, `GET /about`, `GET /api/health` |
 | **Week 2** | Bellek İçi Veri Yapısı & Okuma İşlemleri | [`app/models.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/models.py) | In-Memory veri listesi, `GET /api/users` (listeleme) ve `GET /api/users/:id` |
 | **Week 3** | Tam CRUD Operasyonları & Validasyon | [`app/models.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/models.py) | POST (oluşturma), PUT (tam güncelleme), PATCH (kısmi güncelleme), DELETE (silme), Pydantic validasyonu ve HTTP durum kodları (`201`, `204`, `400`, `404`) |
-| **Week 4** | MVC Mimarisi & Çift Kontrolcü (Dual Controllers) | [`app/controllers/`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/controllers/) | DB bağlantısız **UserModel** CRUD metotları, **UserController** (`/users`), **ApiUserController** (`/api/users`), Swagger etiket güncellemesi |
+| **Week 4** | MVC Mimarisi, Çift Kontrolcü & View Katmanı | [`app/controllers/`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/controllers/), [`app/views/`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/views/) | DB bağlantısız **UserModel** CRUD metotları, **UserController** (`/users`), **ApiUserController** (`/api/users`), View katmanı: `GET /users` (listeleme) ve `POST /users` (oluşturma) HTML sayfası |
 
 ---
 
@@ -21,7 +21,7 @@ Proje, ders müfredatındaki 4 haftalık kazanımları açık ve modüler biçim
 
 - **🏛️ MVC Mimari Ayrımı:**
   - **Model:** Harici veritabanı bağlantısı olmaksızın CRUD operasyonlarını yöneten `UserModel` sınıfı ve Pydantic veri modelleri.
-  - **View:** FastAPI `response_model` ile üretilen JSON API çıktıları ve Swagger UI (`/docs`).
+  - **View:** Jinja2 şablonu [`app/views/users/index.html`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/views/users/index.html) (`GET /users` listeleme + `POST /users` form), JSON API çıktıları ve Swagger UI (`/docs`).
   - **Controllers:** `/users` rotasını yöneten `UserController` ve `/api/users` rotasını yöneten `ApiUserController`.
 - **⚡ Kapsamlı REST API:** 
   - Standart HTTP durum kodları (`200 OK`, `201 Created`, `204 No Content`, `400 Bad Request`, `404 Not Found`, `422 Unprocessable Entity`).
@@ -88,7 +88,11 @@ Proje, ders müfredatındaki 4 haftalık kazanımları açık ve modüler biçim
 - **`UserController` ([`app/controllers/user_controller.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/controllers/user_controller.py)):**
   - Rota Öneki: `/users`
   - Swagger Grubu: `Users (UserController)`
-  - Görevi: Standart kullanıcı rotaları için CRUD uç noktalarını yönetir.
+  - Görevi: **View katmanını** kullanır. `GET /users` → Model'den kullanıcıları alıp `users/index.html` şablonunu render eder; `POST /users` → HTML formunu işler, `UserModel.create()` çağırır ve `303` ile `GET /users`'a yönlendirir (Post/Redirect/Get). Hata durumunda form, hata mesajıyla `400` olarak tekrar gösterilir.
+
+### 3. View (Week 4)
+- **Dosya:** [`app/views/users/index.html`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/views/users/index.html)
+- Controller'dan gelen `users`, `error`, `success` değişkenlerini Jinja2 ile HTML'e dönüştürür (çıktılar otomatik escape edilir).
 
 ---
 
@@ -117,9 +121,9 @@ Proje, ders müfredatındaki 4 haftalık kazanımları açık ve modüler biçim
 ### 🔹 UserController Uç Noktaları (`/users` - Week 4)
 | HTTP Metodu | Uç Nokta | Açıklama | Başarılı Yanıt | Hata Yanıtları |
 |:---|:---|:---|:---:|:---:|
-| `GET` | `/users` | List users ordered by ID | `200 OK` | - |
+| `GET` | `/users` | **Listing** – mezun listesini HTML sayfası olarak render eder (View) | `200 OK` (HTML) | - |
 | `GET` | `/users/:id` | Get one user by ID | `200 OK` | `404 Not Found` |
-| `POST` | `/users` | Create user | `201 Created` | `400 Bad Request` |
+| `POST` | `/users` | **Creating** – HTML formundan (`application/x-www-form-urlencoded`) kullanıcı oluşturur | `303 See Other` → `/users` | `400` (HTML, hata mesajlı) |
 | `PUT` | `/users/:id` | Replace user (Tam güncelleme) | `200 OK` | `404 Not Found` |
 | `PATCH` | `/users/:id` | Partially update user (Kısmi güncelleme) | `200 OK` | `404 Not Found` |
 | `DELETE` | `/users/:id` | Delete user by ID | `204 No Content` | `404 Not Found` |
@@ -134,6 +138,7 @@ docker compose up --build
 ```
 - 📚 **Swagger UI Dokümanları:** [http://localhost:3000/docs](http://localhost:3000/docs)
 - 🌐 **Web Arayüzü:** [http://localhost:3000](http://localhost:3000)
+- 📝 **Week 4 View (Listeleme + Ekleme):** [http://localhost:3000/users](http://localhost:3000/users)
 
 ### 2. Yerel Python ile Çalıştırma:
 ```bash
@@ -160,10 +165,13 @@ alumni/
 │   │   ├── __init__.py
 │   │   ├── api_user_controller.py      # Controller 1: /api/users uç noktaları
 │   │   └── user_controller.py          # Controller 2: /users uç noktaları
-│   └── static/                          # View: Statik HTML/CSS/JS dosyaları
+│   ├── views/
+│   │   └── users/
+│   │       └── index.html              # View (Week 4): GET /users listeleme + POST /users formu
+│   └── static/                          # Statik HTML/CSS/JS dosyaları
 ├── Dockerfile                           # Docker yapılandırma dosyası
 ├── docker-compose.yml                   # Docker Compose servis tanımı
-├── requirements.txt                     # Python bağımlılıkları (FastAPI, Uvicorn, Pydantic)
+├── requirements.txt                     # Python bağımlılıkları (FastAPI, Uvicorn, Pydantic, Jinja2, python-multipart)
 ├── main.py                              # Yerel çalıştırma giriş noktası
 ├── test_api.py                          # UserModel & her iki Controller'ı test eden test paketi
 └── README.md                            # Proje dokümantasyonu
