@@ -58,6 +58,27 @@ function setupEventListeners() {
     openAddModal();
   });
 
+  // Seed Data Button (Week 5: Factory & Seeder)
+  const seedBtn = document.getElementById('seedDataBtn');
+  if (seedBtn) {
+    seedBtn.addEventListener('click', async () => {
+      seedBtn.disabled = true;
+      const originalText = seedBtn.innerHTML;
+      seedBtn.innerHTML = '🌱 Ekleniyor...';
+      try {
+        const res = await fetch('/api/seed?count=50', { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || '50 Mezun başarıyla eklendi!', 'success');
+        loadUsers();
+      } catch (err) {
+        showToast('Tohum verisi eklenirken hata oluştu!', 'error');
+      } finally {
+        seedBtn.disabled = false;
+        seedBtn.innerHTML = originalText;
+      }
+    });
+  }
+
   // Toggle API Console
   document.getElementById('toggleConsoleBtn').addEventListener('click', () => {
     const body = document.getElementById('consoleBody');

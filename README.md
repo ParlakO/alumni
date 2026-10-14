@@ -14,6 +14,7 @@ Proje, ders müfredatındaki 4 haftalık kazanımları açık ve modüler biçim
 | **Week 2** | Bellek İçi Veri Yapısı & Okuma İşlemleri | [`app/models.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/models.py) | In-Memory veri listesi, `GET /api/users` (listeleme) ve `GET /api/users/:id` |
 | **Week 3** | Tam CRUD Operasyonları & Validasyon | [`app/models.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/models.py) | POST (oluşturma), PUT (tam güncelleme), PATCH (kısmi güncelleme), DELETE (silme), Pydantic validasyonu ve HTTP durum kodları (`201`, `204`, `400`, `404`) |
 | **Week 4** | MVC Mimarisi, Çift Kontrolcü & View Katmanı | [`app/controllers/`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/controllers/), [`app/views/`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/views/) | DB bağlantısız **UserModel** CRUD metotları, **UserController** (`/users`), **ApiUserController** (`/api/users`), View katmanı: `GET /users` (listeleme) ve `POST /users` (oluşturma) HTML sayfası |
+| **Week 5** | Veritabanı Göçü (Migration) & Kalıcı Depolama | [`app/database.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/database.py), [`alembic/`](file:///c:/Users/osman.parlak.ISTBTC/alumni/alembic/) | SQLite veritabanı, SQLAlchemy ORM modeli (`UserRecord`), Alembic migrasyonları (`upgrade head`) ile şema versiyonlama ve persistent veri saklama |
 
 ---
 
@@ -170,16 +171,40 @@ python main.py
 python test_api.py
 ```
 
+### 4. Veritabanı Migrasyonları (Alembic):
+```bash
+# Veritabanını en güncel revizyona yükseltme
+python -m alembic upgrade head
+
+# Yeni bir şema değişikliği için otomatik migrasyon üretme
+python -m alembic revision --autogenerate -m "aciklama"
+```
+
+### 5. Veri Fabrikası & Tohumlama (Factory & Seeder - 50 Mezun):
+```bash
+# 50 adet gerçekçi mezun kaydını veritabanına ekler
+python seed.py --count 50
+
+# Veritabanını sıfırlayıp taze 50 kayıt yüklemek için
+python seed.py --reset --count 50
+```
+
 ---
 
 ## 📁 Proje Dosya Yapısı
 
 ```
 alumni/
+├── alembic/                             # Alembic şema migrasyon dizini
+│   ├── versions/                        # Versiyonlanmış göç dosyaları (DDL scriptleri)
+│   └── env.py                           # Alembic çalışma ortamı ve model bağlayıcı
+├── alembic.ini                          # Alembic ana yapılandırma dosyası
 ├── app/
 │   ├── __init__.py
+│   ├── database.py                      # SQLAlchemy motoru, SessionLocal & UserRecord ORM modeli
+│   ├── factory.py                       # UserFactory: Gerçekçi mezun veri üretim fabrikası (Factory Pattern)
 │   ├── main.py                          # Ana uygulama, Week 1 rotaları & Controller kayıtları
-│   ├── models.py                        # Model: UserModel (No DB, CRUD fonksiyonları) & Pydantic şemaları
+│   ├── models.py                        # Model: UserModel (DB destekli CRUD) & Pydantic şemaları
 │   ├── controllers/
 │   │   ├── __init__.py
 │   │   ├── api_user_controller.py      # Controller 1: /api/users uç noktaları
@@ -190,12 +215,13 @@ alumni/
 │   └── static/                          # Statik HTML/CSS/JS dosyaları
 ├── Dockerfile                           # Docker yapılandırma dosyası
 ├── docker-compose.yml                   # Docker Compose servis tanımı
-├── requirements.txt                     # Python bağımlılıkları (FastAPI, Uvicorn, Pydantic, Jinja2, python-multipart)
+├── requirements.txt                     # Python bağımlılıkları (FastAPI, SQLAlchemy, Alembic vb.)
 ├── .env.example                         # Örnek çevre değişkenleri şablonu (şablon)
 ├── .env                                 # Gerçek çevre değişkenleri (lokal/gizli, gitignore'da)
 ├── main.py                              # Yerel çalıştırma giriş noktası
+├── seed.py                              # 50 mezun tohumlama CLI betiği (Database Seeder)
 ├── test_api.py                          # UserModel & her iki Controller'ı test eden test paketi
-├── ddd.md                               # Data Design Documentation (Veri modelleri, şemalar & unutma testi)
+├── ddd.md                               # Data Design Documentation (Veri modelleri, şemalar & migrasyon)
 └── README.md                            # Proje dokümantasyonu
 ```
 

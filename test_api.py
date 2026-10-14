@@ -7,7 +7,7 @@ from app.controllers.user_controller import (
     list_users_view, create_user_view, show_user_view, edit_user_view,
     update_user_view, patch_user_view, delete_user_view
 )
-from app.main import get_hello, get_hello_name, get_sum, get_about, health_check
+from app.main import get_hello, get_hello_name, get_sum, get_about, health_check, get_db_status
 from fastapi import HTTPException
 from starlette.requests import Request
 
@@ -27,8 +27,8 @@ async def main():
     print("\n--- 1. Testing UserModel (No DB) ---")
     model = UserModel()
     initial_users = model.get_all()
-    assert len(initial_users) == 2, f"Expected 2 users, got {len(initial_users)}"
-    print(f"PASS: UserModel.get_all() -> {len(initial_users)} initial users")
+    assert len(initial_users) >= 2, f"Expected at least 2 users, got {len(initial_users)}"
+    print(f"PASS: UserModel.get_all() -> {len(initial_users)} users")
 
     u1 = model.get_by_id(1)
     assert u1 is not None and u1["name"] == "Osman Parlak"
@@ -43,25 +43,25 @@ async def main():
         print("PASS: UserModel.create() duplicate check -> ValueError")
 
     # Create new
-    created = model.create(UserCreate(id=10, name="Ali Veli", email="ali@example.com", department="MIS"))
-    assert created["id"] == 10
-    print("PASS: UserModel.create() -> Created ID 10")
+    created = model.create(UserCreate(id=9010, name="Ali Veli", email="ali@example.com", department="MIS"))
+    assert created["id"] == 9010
+    print("PASS: UserModel.create() -> Created ID 9010")
 
     # Update (PUT)
-    updated = model.update(10, UserUpdate(name="Ali Veli Guncel", email="ali.g@example.com", department="MIS"))
+    updated = model.update(9010, UserUpdate(name="Ali Veli Guncel", email="ali.g@example.com", department="MIS"))
     assert updated["name"] == "Ali Veli Guncel"
     print("PASS: UserModel.update() -> Updated name")
 
     # Patch (PATCH)
-    patched = model.patch(10, UserPatch(department="Software Engineering"))
+    patched = model.patch(9010, UserPatch(department="Software Engineering"))
     assert patched["department"] == "Software Engineering"
     print("PASS: UserModel.patch() -> Patched department")
 
     # Delete
-    deleted = model.delete(10)
+    deleted = model.delete(9010)
     assert deleted is True
-    assert model.get_by_id(10) is None
-    print("PASS: UserModel.delete() -> Deleted ID 10")
+    assert model.get_by_id(9010) is None
+    print("PASS: UserModel.delete() -> Deleted ID 9010")
 
     # -------------------------------------------------------------
     # 2. Test ApiUserController (/api/users)
@@ -75,21 +75,21 @@ async def main():
     assert api_u1["id"] == 1
     print("PASS: [ApiUserController] GET /api/users/1 -> OK")
 
-    new_api_u = await create_api_user(UserCreate(id=20, name="Api User", email="api@example.com", department="MIS"))
-    assert new_api_u["id"] == 20
+    new_api_u = await create_api_user(UserCreate(id=9020, name="Api User", email="api@example.com", department="MIS"))
+    assert new_api_u["id"] == 9020
     print("PASS: [ApiUserController] POST /api/users -> OK")
 
-    put_api_u = await update_api_user(20, UserUpdate(name="Api User Updated", email="api@example.com", department="MIS"))
+    put_api_u = await update_api_user(9020, UserUpdate(name="Api User Updated", email="api@example.com", department="MIS"))
     assert put_api_u["name"] == "Api User Updated"
-    print("PASS: [ApiUserController] PUT /api/users/20 -> OK")
+    print("PASS: [ApiUserController] PUT /api/users/9020 -> OK")
 
-    patch_api_u = await patch_api_user(20, UserPatch(department="Computer Eng"))
+    patch_api_u = await patch_api_user(9020, UserPatch(department="Computer Eng"))
     assert patch_api_u["department"] == "Computer Eng"
-    print("PASS: [ApiUserController] PATCH /api/users/20 -> OK")
+    print("PASS: [ApiUserController] PATCH /api/users/9020 -> OK")
 
-    del_api_res = await delete_api_user(20)
+    del_api_res = await delete_api_user(9020)
     assert del_api_res.status_code == 204
-    print("PASS: [ApiUserController] DELETE /api/users/20 -> 204 No Content")
+    print("PASS: [ApiUserController] DELETE /api/users/9020 -> 204 No Content")
 
     # -------------------------------------------------------------
     # 3. Test UserController (/users) - Week 4 Full CRUD with Views
@@ -102,46 +102,46 @@ async def main():
     assert page.status_code == 200 and "Osman Parlak" in html and "<table" in html
     print("PASS: [UserController] GET /users -> list view")
 
-    created = await create_user_view(req, name="Web User", email="web@example.com", department="IE", id="30")
-    assert created.status_code == 303 and created.headers["location"] == "/users?created=30"
+    created = await create_user_view(req, name="Web User", email="web@example.com", department="IE", id="9030")
+    assert created.status_code == 303 and created.headers["location"] == "/users?created=9030"
     print("PASS: [UserController] POST /users -> 303 /users")
 
-    dup = await create_user_view(req, name="Dup", email="dup@example.com", department="IE", id="30")
+    dup = await create_user_view(req, name="Dup", email="dup@example.com", department="IE", id="9030")
     assert dup.status_code == 400 and "User ID already exists" in dup.body.decode()
     print("PASS: [UserController] POST /users duplicate ID -> 400 view")
 
-    show = await show_user_view(req, 30)
+    show = await show_user_view(req, 9030)
     assert show.status_code == 200 and "Web User" in show.body.decode()
-    print("PASS: [UserController] GET /users/30 -> show view")
+    print("PASS: [UserController] GET /users/9030 -> show view")
 
-    missing = await show_user_view(req, 999)
+    missing = await show_user_view(req, 99999)
     assert missing.status_code == 404
-    print("PASS: [UserController] GET /users/999 -> 404 view")
+    print("PASS: [UserController] GET /users/99999 -> 404 view")
 
-    edit = await edit_user_view(req, 30)
+    edit = await edit_user_view(req, 9030)
     assert edit.status_code == 200 and 'value="Web User"' in edit.body.decode()
-    print("PASS: [UserController] GET /users/30/edit -> edit form pre-filled")
+    print("PASS: [UserController] GET /users/9030/edit -> edit form pre-filled")
 
-    put_ok = await update_user_view(req, 30, name="Web User Updated", email="web@example.com", department="IE")
-    assert put_ok.status_code == 303 and user_model.get_by_id(30)["name"] == "Web User Updated"
-    print("PASS: [UserController] PUT /users/30 -> 303, replaced")
+    put_ok = await update_user_view(req, 9030, name="Web User Updated", email="web@example.com", department="IE")
+    assert put_ok.status_code == 303 and user_model.get_by_id(9030)["name"] == "Web User Updated"
+    print("PASS: [UserController] PUT /users/9030 -> 303, replaced")
 
-    put_bad = await update_user_view(req, 30, name="Only Name", email="", department="")
+    put_bad = await update_user_view(req, 9030, name="Only Name", email="", department="")
     assert put_bad.status_code == 400
-    print("PASS: [UserController] PUT /users/30 missing fields -> 400 view")
+    print("PASS: [UserController] PUT /users/9030 missing fields -> 400 view")
 
-    patch_ok = await patch_user_view(req, 30, name="", email="", department="Industrial Eng")
-    u30 = user_model.get_by_id(30)
-    assert patch_ok.status_code == 303 and u30["department"] == "Industrial Eng" and u30["name"] == "Web User Updated"
-    print("PASS: [UserController] PATCH /users/30 -> 303, only department changed")
+    patch_ok = await patch_user_view(req, 9030, name="", email="", department="Industrial Eng")
+    u9030 = user_model.get_by_id(9030)
+    assert patch_ok.status_code == 303 and u9030["department"] == "Industrial Eng" and u9030["name"] == "Web User Updated"
+    print("PASS: [UserController] PATCH /users/9030 -> 303, only department changed")
 
-    del_ok = await delete_user_view(req, 30)
-    assert del_ok.status_code == 303 and user_model.get_by_id(30) is None
-    print("PASS: [UserController] DELETE /users/30 -> 303 /users")
+    del_ok = await delete_user_view(req, 9030)
+    assert del_ok.status_code == 303 and user_model.get_by_id(9030) is None
+    print("PASS: [UserController] DELETE /users/9030 -> 303 /users")
 
-    del_missing = await delete_user_view(req, 30)
+    del_missing = await delete_user_view(req, 9030)
     assert del_missing.status_code == 404
-    print("PASS: [UserController] DELETE /users/30 again -> 404 view")
+    print("PASS: [UserController] DELETE /users/9030 again -> 404 view")
 
     # -------------------------------------------------------------
     # 4. Test Week 1 Core Endpoints
@@ -153,7 +153,11 @@ async def main():
     assert (await health_check()) == {"status": "ok", "message": "Alumni System API is healthy and running"}
     about = await get_about()
     assert "controllers" in about
-    print("PASS: Week 1 endpoints (/hello, /hello/:name, /sum/:a/:b, /api/health, /about) -> OK")
+    assert "storage" in about
+    db_status = await get_db_status()
+    assert db_status["status"] == "connected"
+    assert db_status["current_revision"] == "4b4900ce1c26"
+    print("PASS: Week 1 & 5 endpoints (/hello, /sum, /api/health, /about, /api/db-status) -> OK")
 
     print("\n=============================================================")
     print("  ALL TESTS PASSED SUCCESSFULLY! (UserModel & 2 Controllers)")

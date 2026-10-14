@@ -43,8 +43,18 @@
 </head>
 <body>
   <main class="container">
-    <h1>🎓 {{ title }}</h1>
-    <p class="subtitle">Week 4 · MVC View Layer · UserController</p>
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 0.5rem;">
+      <h1 style="margin: 0;">🎓 {{ title }}</h1>
+      <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem;">
+        <span class="badge" style="background: #064e3b; color: #a7f3d0; border: 1px solid #059669; padding: 0.35rem 0.7rem; font-weight: 600; font-size: 0.8rem;">
+          🟢 DB: SQLite (alumni.db)
+        </span>
+        <span class="badge" style="background: #1e1b4b; color: #c7d2fe; border: 1px solid #4338ca; padding: 0.35rem 0.7rem; font-size: 0.8rem;">
+          ⚙️ Migration: Alembic <code>4b4900ce1c26</code>
+        </span>
+      </div>
+    </div>
+    <p class="subtitle">Week 4 & 5 · MVC View Layer · SQLAlchemy + Alembic Persistent Storage</p>
 
     {% if error %}<div class="alert alert-error" id="errorAlert">{{ error }}</div>{% endif %}
     {% if success %}<div class="alert alert-success" id="successAlert">{{ success }}</div>{% endif %}

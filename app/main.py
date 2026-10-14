@@ -123,16 +123,49 @@ async def get_sum(a: int, b: int):
 
 @app.get("/about", summary="Project Information", tags=["Week 1 - Core & Utilities"])
 async def get_about():
-    """[Week 1 & 4] Returns project metadata and architectural overview."""
+    """[Week 1 & 4 & 5] Returns project metadata and architectural overview."""
     return {
         "project": "Alumni Tracking System",
         "course": "YBSB3001 - Web Programming",
         "institution": "Istanbul University",
         "architecture": "MVC (Model-View-Controller)",
-        "models": "UserModel (In-Memory, No DB connection)",
+        "models": "UserModel (SQLAlchemy & SQLite persistent DB)",
+        "storage": "SQLite (alumni.db)",
+        "migrations": "Alembic (revision: 4b4900ce1c26)",
         "controllers": ["UserController (/users)", "ApiUserController (/api/users)"],
         "version": "1.0.0",
         "author": "Osman Parlak"
+    }
+
+
+@app.get("/api/db-status", summary="Database & Migration Status", tags=["Week 1 - Core & Utilities"])
+async def get_db_status():
+    """[Week 5] Returns real-time database and migration revision status."""
+    import sqlite3
+    revision = "4b4900ce1c26"
+    db_ok = False
+    total_users = 0
+    try:
+        con = sqlite3.connect("alumni.db")
+        row = con.execute("SELECT version_num FROM alembic_version LIMIT 1;").fetchone()
+        if row:
+            revision = row[0]
+        cnt = con.execute("SELECT count(*) FROM users;").fetchone()
+        if cnt:
+            total_users = cnt[0]
+        con.close()
+        db_ok = True
+    except Exception:
+        pass
+
+    return {
+        "status": "connected" if db_ok else "error",
+        "database": "SQLite (alumni.db)",
+        "orm": "SQLAlchemy 2.1+",
+        "migration_tool": "Alembic",
+        "current_revision": revision,
+        "persistent_storage": True,
+        "record_count": total_users
     }
 
 
@@ -140,6 +173,19 @@ async def get_about():
 async def health_check():
     """[Week 1] Health check endpoint returning API status."""
     return {"status": "ok", "message": "Alumni System API is healthy and running"}
+
+
+@app.post("/api/seed", summary="Seed Database with Fake Alumni Records", tags=["Week 1 - Core & Utilities"])
+async def trigger_seed(count: int = 50, reset: bool = False):
+    """[Week 5: Factory & Seeder] Seeds the database with realistic alumni using UserFactory."""
+    from seed import seed_users
+    total = seed_users(count=count, reset=reset)
+    return {
+        "status": "success",
+        "message": f"Successfully seeded {count} alumni records",
+        "seeded_count": count,
+        "total_records": total
+    }
 
 
 # ===================================================================

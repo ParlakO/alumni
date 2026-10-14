@@ -1,14 +1,17 @@
 import os
-from typing import Optional
-from fastapi import APIRouter, Form, Request, status
+from typing import Optional, Any
+from fastapi import APIRouter, Form, Request, status, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
+from app.database import get_db
 from app.models import UserCreate, UserUpdate, UserPatch, user_model
 
 # ===================================================================
-# WEEK 4: UserController (/users) - Full CRUD with the VIEW LAYER
+# WEEK 4 & 5: UserController (/users) - Full CRUD with the VIEW LAYER
+# Directly wired with database connection (SQLAlchemy Session)
 #
 #   GET    /users             -> index   (list + create form)     users/index.html
 #   POST   /users             -> create  (form submit)            -> 303 /users
@@ -18,9 +21,9 @@ from app.models import UserCreate, UserUpdate, UserPatch, user_model
 #   PATCH  /users/{id}        -> partial (empty fields ignored)   -> 303 /users/{id}
 #   DELETE /users/{id}        -> delete                           -> 303 /users
 #
-# HTML forms can't send PUT/PATCH/DELETE, so the views submit
-# POST /users/{id}?_method=PUT|PATCH|DELETE (see MethodOverrideMiddleware in main.py).
-# Data always goes through the Model (UserModel), output through the View (Jinja2).
+# HTML forms submit POST /users/{id}?_method=PUT|PATCH|DELETE
+# Data always flows through the Model (UserModel with DB Session),
+# and output renders through the View (Jinja2).
 # ===================================================================
 
 VIEWS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "views")
@@ -41,9 +44,9 @@ def _render(request: Request, template: str, context: dict, status_code: int = 2
     return templates.TemplateResponse(request, template, base, status_code=status_code)
 
 
-def _render_index(request: Request, status_code: int = 200, **context) -> HTMLResponse:
+def _render_index(request: Request, status_code: int = 200, db: Optional[Any] = None, **context) -> HTMLResponse:
     context.setdefault("title", "Mezun Listesi")
-    context["users"] = user_model.get_all(order_by_id=True)
+    context["users"] = user_model.get_all(order_by_id=True, db=db)
     return _render(request, "users/index.html", context, status_code)
 
 
@@ -67,14 +70,19 @@ def _redirect(url: str) -> RedirectResponse:
 # READ (list) - GET /users
 # -------------------------------------------------------------------
 @router.get("", response_class=HTMLResponse, summary="[UserController] List users (view)")
-async def list_users_view(request: Request, created: Optional[int] = None, deleted: Optional[int] = None):
-    """[Week 4 - View] Renders users/index.html with all users ordered by ID."""
+async def list_users_view(
+    request: Request,
+    created: Optional[int] = None,
+    deleted: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """[Week 4 & 5 - View] Renders users/index.html with all users from database ordered by ID."""
     success = None
     if created is not None:
         success = f"Mezun #{created} başarıyla oluşturuldu."
     elif deleted is not None:
         success = f"Mezun #{deleted} silindi."
-    return _render_index(request, success=success)
+    return _render_index(request, success=success, db=db)
 
 
 # -------------------------------------------------------------------
@@ -87,17 +95,18 @@ async def create_user_view(
     email: str = Form(""),
     department: str = Form(""),
     id: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
 ):
-    """[Week 4 - View] Creates a user from the form. Success -> 303 /users, error -> 400 + view."""
+    """[Week 4 & 5 - View] Creates a user in DB from the form. Success -> 303 /users, error -> 400 + view."""
     form = {"id": id, "name": name, "email": email, "department": department}
     try:
         user_id = int(id) if id not in (None, "") else None
-        new_user = user_model.create(UserCreate(id=user_id, name=name, email=email, department=department))
+        new_user = user_model.create(UserCreate(id=user_id, name=name, email=email, department=department), db=db)
     except ValidationError as e:
-        return _render_index(request, status.HTTP_400_BAD_REQUEST, error=_validation_message(e), form=form)
+        return _render_index(request, status.HTTP_400_BAD_REQUEST, db=db, error=_validation_message(e), form=form)
     except ValueError as e:
         # int() conversion error or "User ID already exists"
-        return _render_index(request, status.HTTP_400_BAD_REQUEST, error=str(e), form=form)
+        return _render_index(request, status.HTTP_400_BAD_REQUEST, db=db, error=str(e), form=form)
     return _redirect(f"/users?created={new_user['id']}")
 
 
@@ -105,9 +114,9 @@ async def create_user_view(
 # EDIT FORM - GET /users/{id}/edit   (declared before /{user_id})
 # -------------------------------------------------------------------
 @router.get("/{user_id}/edit", response_class=HTMLResponse, summary="[UserController] Edit form (view)")
-async def edit_user_view(request: Request, user_id: int):
-    """[Week 4 - View] Renders users/edit.html pre-filled with the user's data."""
-    user = user_model.get_by_id(user_id)
+async def edit_user_view(request: Request, user_id: int, db: Session = Depends(get_db)):
+    """[Week 4 & 5 - View] Renders users/edit.html pre-filled with the user's data from DB."""
+    user = user_model.get_by_id(user_id, db=db)
     if not user:
         return _render_not_found(request, user_id)
     return _render(request, "users/edit.html",
@@ -118,9 +127,9 @@ async def edit_user_view(request: Request, user_id: int):
 # READ (one) - GET /users/{id}
 # -------------------------------------------------------------------
 @router.get("/{user_id}", response_class=HTMLResponse, summary="[UserController] Show user (view)")
-async def show_user_view(request: Request, user_id: int, updated: Optional[str] = None):
-    """[Week 4 - View] Renders users/show.html for a single user."""
-    user = user_model.get_by_id(user_id)
+async def show_user_view(request: Request, user_id: int, updated: Optional[str] = None, db: Session = Depends(get_db)):
+    """[Week 4 & 5 - View] Renders users/show.html for a single user from DB."""
+    user = user_model.get_by_id(user_id, db=db)
     if not user:
         return _render_not_found(request, user_id)
     success = f"Mezun #{user_id} güncellendi ({updated})." if updated else None
@@ -138,13 +147,14 @@ async def update_user_view(
     name: str = Form(""),
     email: str = Form(""),
     department: str = Form(""),
+    db: Session = Depends(get_db)
 ):
-    """[Week 4 - View] Full replacement; all fields required. Success -> 303 /users/{id}."""
+    """[Week 4 & 5 - View] Full replacement in DB; all fields required. Success -> 303 /users/{id}."""
     form = {"name": name, "email": email, "department": department}
-    if not user_model.exists_by_id(user_id):
+    if not user_model.exists_by_id(user_id, db=db):
         return _render_not_found(request, user_id)
     try:
-        user_model.update(user_id, UserUpdate(name=name, email=email, department=department))
+        user_model.update(user_id, UserUpdate(name=name, email=email, department=department), db=db)
     except ValidationError as e:
         return _render(request, "users/edit.html",
                        {"title": f"Mezun Düzenle #{user_id}", "user_id": user_id, "form": form,
@@ -163,14 +173,15 @@ async def patch_user_view(
     name: Optional[str] = Form(None),
     email: Optional[str] = Form(None),
     department: Optional[str] = Form(None),
+    db: Session = Depends(get_db)
 ):
-    """[Week 4 - View] Partial update; empty fields are ignored. Success -> 303 /users/{id}."""
+    """[Week 4 & 5 - View] Partial update in DB; empty fields are ignored. Success -> 303 /users/{id}."""
     form = {"name": name, "email": email, "department": department}
-    if not user_model.exists_by_id(user_id):
+    if not user_model.exists_by_id(user_id, db=db):
         return _render_not_found(request, user_id)
     try:
         changes = UserPatch(**{k: v for k, v in form.items() if v not in (None, "")})
-        user_model.patch(user_id, changes)
+        user_model.patch(user_id, changes, db=db)
     except ValidationError as e:
         return _render(request, "users/edit.html",
                        {"title": f"Mezun Düzenle #{user_id}", "user_id": user_id, "form": form,
@@ -183,8 +194,8 @@ async def patch_user_view(
 # DELETE - DELETE /users/{id}
 # -------------------------------------------------------------------
 @router.delete("/{user_id}", response_class=HTMLResponse, summary="[UserController] Delete user (form, DELETE)")
-async def delete_user_view(request: Request, user_id: int):
-    """[Week 4 - View] Deletes the user. Success -> 303 /users, missing -> 404 view."""
-    if not user_model.delete(user_id):
+async def delete_user_view(request: Request, user_id: int, db: Session = Depends(get_db)):
+    """[Week 4 & 5 - View] Deletes user from DB. Success -> 303 /users, missing -> 404 view."""
+    if not user_model.delete(user_id, db=db):
         return _render_not_found(request, user_id)
     return _redirect(f"/users?deleted={user_id}")

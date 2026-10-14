@@ -16,10 +16,14 @@ services:
       - COURSE_CODE=${COURSE_CODE:-YBSB3001}
       - UNIVERSITY=${UNIVERSITY:-İstanbul Üniversitesi}
       - ARCHITECTURE=${ARCHITECTURE:-MVC (Model-View-Controller)}
-      - STORAGE_TYPE=${STORAGE_TYPE:-In-Memory (UserModel - No DB)}
+      - STORAGE_TYPE=${STORAGE_TYPE:-SQLite Database (SQLAlchemy & Alembic)}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./alumni.db}
       - DATA_DESIGN_DOC=${DATA_DESIGN_DOC:-ddd.md}
     volumes:
       - ./app:/app/app
+      - ./alumni.db:/app/alumni.db
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
       - ./ddd.md:/app/ddd.md:ro
       - ./README.md:/app/README.md:ro
     labels:

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Any
 from pydantic import BaseModel, Field
 
 
@@ -40,135 +40,187 @@ class User(UserBase):
 
 
 # ===================================================================
-# WEEK 4: UserModel (In-Memory Data Model with CRUD Functions - No DB)
 # ===================================================================
+# WEEK 4 & WEEK 5: UserModel (Database-Backed CRUD Model via SQLAlchemy)
+# ===================================================================
+
+from sqlalchemy import func, or_
+from app.database import SessionLocal, UserRecord, seed_database
+
 
 class UserModel:
     """
-    User Model without database connection.
-    Encapsulates all in-memory CRUD operations, business rules, and validations.
-    Shared by both UserController and ApiUserController.
+    User Model backed by SQLAlchemy and SQLite database.
+    Encapsulates all persistent CRUD operations, business rules, and validations.
+    Maintains 100% backward compatibility with UserController and ApiUserController.
     """
 
     def __init__(self):
-        # Week 2 & 3: Initial seed data
-        self._users: List[dict] = [
-            {"id": 1, "name": "Osman Parlak", "email": "osman@example.com", "department": "MIS"},
-            {"id": 2, "name": "Ahmet Yilmaz", "email": "ahmet@example.com", "department": "Computer Engineering"}
-        ]
+        # Initialize tables and seed records if database is empty
+        seed_database()
 
-    # CRUD - Read All (Week 2 & Week 3)
+    @staticmethod
+    def _get_session(db: Optional[Any] = None):
+        from sqlalchemy.orm import Session as SQLAlchemySession
+        if isinstance(db, SQLAlchemySession):
+            return db, False
+        return SessionLocal(), True
+
+    # CRUD - Read All (Week 2 & Week 3 & Week 5)
     def get_all(
         self,
         search: Optional[str] = None,
         department: Optional[str] = None,
-        order_by_id: bool = True
+        order_by_id: bool = True,
+        db: Optional[Any] = None
     ) -> List[dict]:
         """Returns all users with optional filtering, ordered by ID."""
-        results = list(self._users)
+        session, close_needed = self._get_session(db)
+        try:
+            query = session.query(UserRecord)
 
-        if department:
-            dept_lower = department.lower()
-            results = [u for u in results if u.get("department", "").lower() == dept_lower]
+            if department:
+                query = query.filter(func.lower(UserRecord.department) == department.lower())
 
-        if search:
-            q = search.lower()
-            results = [
-                u for u in results
-                if q in u.get("name", "").lower()
-                or q in u.get("email", "").lower()
-                or q in u.get("department", "").lower()
-            ]
+            if search:
+                pattern = f"%{search.lower()}%"
+                query = query.filter(
+                    or_(
+                        func.lower(UserRecord.name).like(pattern),
+                        func.lower(UserRecord.email).like(pattern),
+                        func.lower(UserRecord.department).like(pattern)
+                    )
+                )
 
-        if order_by_id:
-            results.sort(key=lambda u: u["id"])
+            if order_by_id:
+                query = query.order_by(UserRecord.id.asc())
 
-        return results
+            records = query.all()
+            return [u.to_dict() for u in records]
+        finally:
+            if close_needed:
+                session.close()
 
-    # CRUD - Read One by ID (Week 2)
-    def get_by_id(self, user_id: int) -> Optional[dict]:
+    # CRUD - Read One by ID (Week 2 & Week 5)
+    def get_by_id(self, user_id: int, db: Optional[Any] = None) -> Optional[dict]:
         """Finds and returns a user by ID, or None if not found."""
-        return next((u for u in self._users if u["id"] == user_id), None)
+        session, close_needed = self._get_session(db)
+        try:
+            record = session.query(UserRecord).filter(UserRecord.id == user_id).first()
+            return record.to_dict() if record else None
+        finally:
+            if close_needed:
+                session.close()
 
-    # Check Existence (Week 3)
-    def exists_by_id(self, user_id: int) -> bool:
+    # Check Existence (Week 3 & Week 5)
+    def exists_by_id(self, user_id: int, db: Optional[Any] = None) -> bool:
         """Checks if a user with the given ID already exists."""
-        return any(u["id"] == user_id for u in self._users)
+        session, close_needed = self._get_session(db)
+        try:
+            return session.query(UserRecord).filter(UserRecord.id == user_id).first() is not None
+        finally:
+            if close_needed:
+                session.close()
 
-    # CRUD - Create (Week 3)
-    def create(self, user_data: UserCreate) -> dict:
+    # CRUD - Create (Week 3 & Week 5)
+    def create(self, user_data: UserCreate, db: Optional[Any] = None) -> dict:
         """
-        Creates a new user.
+        Creates a new user in the database.
         Raises ValueError if explicit ID already exists.
         Auto-generates sequential ID if ID is omitted.
         """
-        if user_data.id is not None:
-            if self.exists_by_id(user_data.id):
-                raise ValueError("User ID already exists")
-            assigned_id = user_data.id
-        else:
-            assigned_id = max([u["id"] for u in self._users], default=0) + 1
+        session, close_needed = self._get_session(db)
+        try:
+            if user_data.id is not None:
+                if session.query(UserRecord).filter(UserRecord.id == user_data.id).first() is not None:
+                    raise ValueError("User ID already exists")
+                assigned_id = user_data.id
+            else:
+                max_id = session.query(func.max(UserRecord.id)).scalar() or 0
+                assigned_id = max_id + 1
 
-        new_user = {
-            "id": assigned_id,
-            "name": user_data.name,
-            "email": user_data.email,
-            "department": user_data.department,
-        }
-        self._users.append(new_user)
-        return new_user
+            new_record = UserRecord(
+                id=assigned_id,
+                name=user_data.name,
+                email=user_data.email,
+                department=user_data.department
+            )
+            session.add(new_record)
+            session.commit()
+            session.refresh(new_record)
+            return new_record.to_dict()
+        finally:
+            if close_needed:
+                session.close()
 
-    # CRUD - Update (PUT - Week 3)
-    def update(self, user_id: int, user_data: UserUpdate) -> Optional[dict]:
+    # CRUD - Update (PUT - Week 3 & Week 5)
+    def update(self, user_id: int, user_data: UserUpdate, db: Optional[Any] = None) -> Optional[dict]:
         """
         Replaces user data completely.
         Returns the updated user dict or None if not found.
         """
-        index = next((idx for idx, u in enumerate(self._users) if u["id"] == user_id), -1)
-        if index == -1:
-            return None
+        session, close_needed = self._get_session(db)
+        try:
+            record = session.query(UserRecord).filter(UserRecord.id == user_id).first()
+            if not record:
+                return None
 
-        updated_user = {
-            "id": user_id,
-            "name": user_data.name,
-            "email": user_data.email,
-            "department": user_data.department,
-        }
-        self._users[index] = updated_user
-        return updated_user
+            record.name = user_data.name
+            record.email = user_data.email
+            record.department = user_data.department
+            session.commit()
+            session.refresh(record)
+            return record.to_dict()
+        finally:
+            if close_needed:
+                session.close()
 
-    # CRUD - Patch (PATCH - Week 3)
-    def patch(self, user_id: int, user_data: UserPatch) -> Optional[dict]:
+    # CRUD - Patch (PATCH - Week 3 & Week 5)
+    def patch(self, user_id: int, user_data: UserPatch, db: Optional[Any] = None) -> Optional[dict]:
         """
         Partially updates provided fields.
         Returns updated user dict or None if not found.
         """
-        user = self.get_by_id(user_id)
-        if not user:
-            return None
+        session, close_needed = self._get_session(db)
+        try:
+            record = session.query(UserRecord).filter(UserRecord.id == user_id).first()
+            if not record:
+                return None
 
-        if user_data.name is not None:
-            user["name"] = user_data.name
-        if user_data.email is not None:
-            user["email"] = user_data.email
-        if user_data.department is not None:
-            user["department"] = user_data.department
+            if user_data.name is not None:
+                record.name = user_data.name
+            if user_data.email is not None:
+                record.email = user_data.email
+            if user_data.department is not None:
+                record.department = user_data.department
 
-        return user
+            session.commit()
+            session.refresh(record)
+            return record.to_dict()
+        finally:
+            if close_needed:
+                session.close()
 
-    # CRUD - Delete (Week 3)
-    def delete(self, user_id: int) -> bool:
+    # CRUD - Delete (Week 3 & Week 5)
+    def delete(self, user_id: int, db: Optional[Any] = None) -> bool:
         """
         Deletes a user by ID.
         Returns True if deleted, False if user does not exist.
         """
-        index = next((idx for idx, u in enumerate(self._users) if u["id"] == user_id), -1)
-        if index == -1:
-            return False
+        session, close_needed = self._get_session(db)
+        try:
+            record = session.query(UserRecord).filter(UserRecord.id == user_id).first()
+            if not record:
+                return False
 
-        self._users.pop(index)
-        return True
+            session.delete(record)
+            session.commit()
+            return True
+        finally:
+            if close_needed:
+                session.close()
 
 
-# Singleton instance of UserModel without DB
+# Singleton instance of UserModel with Database backing
 user_model = UserModel()
+

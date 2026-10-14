@@ -164,11 +164,41 @@ Bu test, mikroservis ve bulut mimarilerinde veritabanı ve Docker Volume gereksi
 
 ---
 
-## 7. Gelecek Veritabanı Geçiş Yol Haritası (Database Roadmap)
+## 7. Veritabanı Göçü ve Alembic Entegrasyonu (Week 5 - Database Migration)
 
-İlerleyen aşamalarda kalıcı bir veritabanına geçilmek istendiğinde uygulanacak mimari adımlar:
+Uygulama, bellek içi (In-Memory) yapıdan kalıcı **SQLite** veritabanına ve endüstri standardı **Alembic** migrasyon aracına başarıyla geçirilmiştir:
 
-1. **ORM Katmanı:** `SQLAlchemy` veya `SQLModel` kütüphanesinin eklenmesi.
-2. **Depolama:** Hafif ortamlar için `SQLite`, üretim ortamı için `PostgreSQL` konteyneri (`docker-compose.yml` servisi).
-3. **Model Katmanı Soyutlaması:** `UserModel` sınıfı bir Repository desenine (Repository Pattern) dönüştürülerek Controller katmanında hiçbir kod değişikliği yapılmadan SQL veritabanına bağlanabilir.
-4. **Migrasyonlar:** Şema değişikliklerini versiyonlamak için `Alembic` entegrasyonu.
+### 7.1. SQLAlchemy ORM Modeli ([`app/database.py`](app/database.py))
+```python
+class UserRecord(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(120), nullable=False)
+    department = Column(String(100), nullable=False)
+```
+
+### 7.2. Alembic Migrasyon Süreci
+1. **Başlatma:** `python -m alembic init alembic`
+2. **İlk Revizyon (Autogenerate):** `alembic/versions/*_create_users_table.py` oluşturuldu.
+3. **Şema Yükseltme (Upgrade):** `python -m alembic upgrade head` komutu ile `users` tablosu ve `alembic_version` takip tablosu oluşturuldu.
+
+### 7.3. Mimari Şeffaflık (Repository Pattern)
+`UserModel` arayüzü (`get_all`, `get_by_id`, `create`, `update`, `patch`, `delete`) SQL sorguları çalıştıracak şekilde dönüştürülmüştür. Bu sayede hem `UserController` (`/users`) hem de `ApiUserController` (`/api/users`) kontrolcülerinde tek bir satır kod bile değiştirmeden kalıcı veritabanı desteğine geçilmiştir.
+
+---
+
+## 8. Veri Üretim Fabrikası ve Tohumlama (Factory & Seeder Pattern)
+
+Geliştirme, yük testleri ve veri görselleştirmesi için Factory ve Seeder desenleri uygulanmıştır:
+
+- **Factory Deseni ([`app/factory.py`](app/factory.py)):**
+  - [`UserFactory`](app/factory.py): Gerçekçi Türkçe isimler, soyisimler, geçerli e-posta adresleri ve üniversite bölümleri kullanarak tekil veya toplu (`create_batch(count=50)`) sentetik veri üretir.
+- **Veritabanı Tohumlayıcı ([`seed.py`](seed.py)):**
+  - Komut satırından doğrudan çalıştırılabilir: `python seed.py --count 50`
+  - Var olan kayıtları silip yeniden tohumlama desteği: `python seed.py --reset`
+- **Web ve API Tetikleme:**
+  - `POST /api/seed?count=50` uç noktası ve arayüzdeki "🌱 50 Mezun Ekle" butonu ile tek tıkla veritabanına 50 mezun tohumlanabilir.
+
+
