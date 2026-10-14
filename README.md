@@ -191,6 +191,8 @@ alumni/
 ├── Dockerfile                           # Docker yapılandırma dosyası
 ├── docker-compose.yml                   # Docker Compose servis tanımı
 ├── requirements.txt                     # Python bağımlılıkları (FastAPI, Uvicorn, Pydantic, Jinja2, python-multipart)
+├── .env.example                         # Örnek çevre değişkenleri şablonu (şablon)
+├── .env                                 # Gerçek çevre değişkenleri (lokal/gizli, gitignore'da)
 ├── main.py                              # Yerel çalıştırma giriş noktası
 ├── test_api.py                          # UserModel & her iki Controller'ı test eden test paketi
 ├── ddd.md                               # Data Design Documentation (Veri modelleri, şemalar & unutma testi)

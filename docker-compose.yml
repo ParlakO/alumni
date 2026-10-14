@@ -7,15 +7,17 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
-      - PORT=3000
-      - APP_NAME=Alumni Tracking System
-      - STUDENT_NAME=Osman Parlak
-      - COURSE_CODE=YBSB3001
-      - UNIVERSITY=İstanbul Üniversitesi
-      - ARCHITECTURE=MVC (Model-View-Controller)
-      - STORAGE_TYPE=In-Memory (UserModel - No DB)
-      - DATA_DESIGN_DOC=ddd.md
+      - PORT=${PORT:-3000}
+      - APP_NAME=${APP_NAME:-Alumni Tracking System}
+      - STUDENT_NAME=${STUDENT_NAME:-Osman Parlak}
+      - COURSE_CODE=${COURSE_CODE:-YBSB3001}
+      - UNIVERSITY=${UNIVERSITY:-İstanbul Üniversitesi}
+      - ARCHITECTURE=${ARCHITECTURE:-MVC (Model-View-Controller)}
+      - STORAGE_TYPE=${STORAGE_TYPE:-In-Memory (UserModel - No DB)}
+      - DATA_DESIGN_DOC=${DATA_DESIGN_DOC:-ddd.md}
     volumes:
       - ./app:/app/app
       - ./ddd.md:/app/ddd.md:ro
