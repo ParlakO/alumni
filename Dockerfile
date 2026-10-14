@@ -6,6 +6,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=3000
 
+# Metadata Labels
+LABEL maintainer="Osman Parlak" \
+      org.opencontainers.image.title="Alumni Tracking System" \
+      org.opencontainers.image.authors="Osman Parlak" \
+      course="YBSB3001 - Web Programlama" \
+      university="İstanbul Üniversitesi" \
+      documentation="ddd.md"
+
 WORKDIR /app
 
 # Install system dependencies if required

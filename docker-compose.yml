@@ -9,8 +9,23 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
+      - APP_NAME=Alumni Tracking System
+      - STUDENT_NAME=Osman Parlak
+      - COURSE_CODE=YBSB3001
+      - UNIVERSITY=İstanbul Üniversitesi
+      - ARCHITECTURE=MVC (Model-View-Controller)
+      - STORAGE_TYPE=In-Memory (UserModel - No DB)
+      - DATA_DESIGN_DOC=ddd.md
     volumes:
       - ./app:/app/app
+      - ./ddd.md:/app/ddd.md:ro
+      - ./README.md:/app/README.md:ro
+    labels:
+      org.opencontainers.image.title: "Alumni Tracking System API"
+      org.opencontainers.image.description: "MVC mimarisinde In-Memory UserModel ve cift Controller ile Mezun Takip Sistemi"
+      org.opencontainers.image.authors: "Osman Parlak"
+      org.opencontainers.image.version: "1.0.0"
+      org.opencontainers.image.documentation: "ddd.md"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
       interval: 30s
