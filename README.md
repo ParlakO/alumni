@@ -71,6 +71,7 @@ Proje, ders müfredatındaki 4 haftalık kazanımları açık ve modüler biçim
 
 ### 1. Model (Veritabanı Bağlantısız `UserModel`)
 - **Dosya:** [`app/models.py`](file:///c:/Users/osman.parlak.ISTBTC/alumni/app/models.py)
+- **Detaylı Veri Tasarımı Dokümanı:** 📊 [Data Design Documentation (ddd.md)](ddd.md) (Şemalar, kısıtlamalar, veri yaşam döngüsü ve unutma testi)
 - **Açıklama:** Harici bir veritabanı sürücüsü gerektirmeksizin tüm veri manipülasyonunu ve iş kurallarını kendi üzerinde toplayan nesne tabanlı sınıf:
   - `get_all(search, department, order_by_id)`: Kullanıcıları filtreler ve ID sırasıyla listeler.
   - `get_by_id(user_id)`: Tek bir kullanıcıyı bulur.
@@ -131,6 +132,23 @@ Proje, ders müfredatındaki 4 haftalık kazanımları açık ve modüler biçim
 
 ---
 
+## 📊 Veri Tasarımı & Unutma Testi (Data Design Documentation - DDD)
+
+Projenin veri mimarisi, Pydantic DTO şemaları, bellek içi veri depolama kuralları ve durumsuz (stateless) konteyner yaşam döngüsü hakkında kapsamlı dokümantasyon hazırlanmıştır:
+
+👉 **[📊 Data Design Documentation (ddd.md)](ddd.md)**
+
+### 💡 Konteyner Kalıcılık / "Forgetting Test" Özeti:
+Projede harici bir veritabanı veya kalıcı Docker Volume bulunmadığından veriler **RAM** üzerinde yaşar. Bu durum şu adımlarla test edilebilir:
+1. `docker compose up -d` ile sistem ayağa kaldırılır (2 tohum kayıt yüklüdür).
+2. `POST /api/users` ile yeni bir mezun eklenir (toplam 3 kayıt olur).
+3. `docker compose down` ile konteyner yok edildiğinde RAM boşaltılır.
+4. Tekrar `docker compose up -d` yapıldığında yeni eklenen kaydın **unutulduğu** ve sistemin ilk 2 kayda sıfırlandığı doğrulanır.
+
+Detaylı şemalar, model alanları ve doğrulama kuralları için lütfen **[ddd.md](ddd.md)** dosyasını inceleyiniz.
+
+---
+
 ## 🚀 Çalıştırma Talimatları
 
 ### 1. Docker ile Çalıştırma:
@@ -175,6 +193,7 @@ alumni/
 ├── requirements.txt                     # Python bağımlılıkları (FastAPI, Uvicorn, Pydantic, Jinja2, python-multipart)
 ├── main.py                              # Yerel çalıştırma giriş noktası
 ├── test_api.py                          # UserModel & her iki Controller'ı test eden test paketi
+├── ddd.md                               # Data Design Documentation (Veri modelleri, şemalar & unutma testi)
 └── README.md                            # Proje dokümantasyonu
 ```
 
