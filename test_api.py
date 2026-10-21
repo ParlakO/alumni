@@ -159,8 +159,63 @@ async def main():
     assert db_status["current_revision"] == "4b4900ce1c26"
     print("PASS: Week 1 & 5 endpoints (/hello, /sum, /api/health, /about, /api/db-status) -> OK")
 
+    # -------------------------------------------------------------
+    # 5. Test Week 6: Direct & Nested Routes, Include, Applications
+    # -------------------------------------------------------------
+    print("\n--- 5. Testing Week 6: Direct & Nested Routes & Applications ---")
+    from app.controllers.api_user_controller import create_user_job, get_user_jobs, get_user_applications
+    from app.controllers.api_job_controller import get_all_jobs, get_job_by_id, apply_to_job, get_job_applications
+    from app.models import JobPostingCreate, ApplicationCreate
+
+    # 5.1 Nested Route: POST /api/users/:id/jobs (URL says whose posting it is)
+    new_job = await create_user_job(user_id=1, job_in=JobPostingCreate(title="Cloud Engineer", company="Google"))
+    assert new_job["user_id"] == 1
+    assert new_job["title"] == "Cloud Engineer"
+    print("PASS: [Nested Route] POST /api/users/1/jobs -> 201 Created")
+
+    # 5.2 Nested Route 404: Non-existent user
+    try:
+        await create_user_job(user_id=99999, job_in=JobPostingCreate(title="Ghost", company="None"))
+        assert False, "Should raise 404"
+    except HTTPException as e:
+        assert e.status_code == 404
+        print("PASS: [Nested Route] POST /api/users/99999/jobs -> 404 User Not Found")
+
+    # 5.3 Include Query: GET /api/users/1?include=jobs
+    user_with_jobs = await get_api_user_by_id(user_id=1, include="jobs")
+    assert "jobs" in user_with_jobs
+    assert len(user_with_jobs["jobs"]) >= 1
+    print(f"PASS: [Include] GET /api/users/1?include=jobs -> returns {len(user_with_jobs['jobs'])} jobs")
+
+    # 5.4 Direct Route: GET /api/jobs
+    all_jobs = await get_all_jobs()
+    assert len(all_jobs) >= 1
+    print(f"PASS: [Direct Route] GET /api/jobs -> {len(all_jobs)} jobs")
+
+    # 5.5 Applications Route: POST /api/jobs/:id/applications (201 Created)
+    app_result = await apply_to_job(job_id=new_job["id"], application_in=ApplicationCreate(userId=2))
+    assert app_result["status"] == "applied"
+    assert app_result["user_id"] == 2
+    print("PASS: [Applications Route] POST /api/jobs/:id/applications -> 201 Created")
+
+    # 5.6 Duplicate Application Check: (409 Conflict)
+    try:
+        await apply_to_job(job_id=new_job["id"], application_in=ApplicationCreate(userId=2))
+        assert False, "Should raise 409 Conflict"
+    except HTTPException as e:
+        assert e.status_code == 409
+        print("PASS: [Applications Route] Duplicate application -> 409 Conflict")
+
+    # 5.7 RESTRICT Delete Rule: Attempt to delete user 1 who has active postings
+    try:
+        await delete_api_user(user_id=1)
+        assert False, "Should raise 409 Conflict due to RESTRICT rule"
+    except HTTPException as e:
+        assert e.status_code == 409
+        print("PASS: [Delete Rule] DELETE /api/users/1 with active jobs -> 409 Conflict (RESTRICT rule)")
+
     print("\n=============================================================")
-    print("  ALL TESTS PASSED SUCCESSFULLY! (UserModel & 2 Controllers)")
+    print("  ALL TESTS PASSED SUCCESSFULLY! (Direct & Nested Routes OK)")
     print("=============================================================")
 
 if __name__ == "__main__":

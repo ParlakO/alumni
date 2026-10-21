@@ -5,10 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.controllers import api_user_controller, user_controller
+from app.controllers import api_user_controller, user_controller, api_job_controller
 
 # ===================================================================
-# SWAGGER & APPLICATION CONFIGURATION (WEEK 1 - WEEK 4 PROGRESSION)
+# SWAGGER & APPLICATION CONFIGURATION (WEEK 1 - WEEK 6 PROGRESSION)
 # ===================================================================
 
 app = FastAPI(
@@ -192,10 +192,13 @@ async def trigger_seed(count: int = 50, reset: bool = False):
 # WEEK 4: Register Controllers (UserController & ApiUserController)
 # ===================================================================
 
-# Controller 1: /api/users
+# Controller 1: /api/users (Users & Nested Job/Application Routes)
 app.include_router(api_user_controller.router)
 
-# Controller 2: /users
+# Controller 2: /api/jobs (Direct Job Postings & Applications Routes)
+app.include_router(api_job_controller.router)
+
+# Controller 3: /users (View Layer)
 app.include_router(user_controller.router)
 
 

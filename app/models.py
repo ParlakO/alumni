@@ -231,6 +231,10 @@ class UserModel:
             record = session.query(UserRecord).filter(UserRecord.id == user_id).first()
             if not record:
                 return False
+            # Enforce RESTRICT deletion rule: cannot delete user with active job postings
+            has_jobs = session.query(JobPostingRecord).filter(JobPostingRecord.user_id == user_id).first() is not None
+            if has_jobs:
+                raise ValueError("Cannot delete user: user has active job postings (RESTRICT rule)")
             session.delete(record)
             session.commit()
             return True
