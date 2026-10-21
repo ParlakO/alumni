@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Üniversite Mezun Takip Sistemi | Alumni Portal</title>
-  <meta name="description" content="Üniversite mezunları için modern, hızlı ve RESTful API entegrasyonlu mezun takip sistemi portalı.">
+  <title>Üniversite Mezun Takip Sistemi | Alumni, Jobs & Applications Portal</title>
+  <meta name="description" content="Üniversite mezunları, iş ilanları ve başvurular için modern, hızlı ve RESTful API entegrasyonlu takip sistemi portalı.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
         </div>
         <div class="brand-text">
           <span class="brand-title">AlumniTrack</span>
-          <span class="brand-subtitle">Mezun Bilgi Sistemi</span>
+          <span class="brand-subtitle">Mezun, İlan & Başvuru Portalı</span>
         </div>
       </div>
 
@@ -42,10 +42,13 @@
             <line x1="16" y1="13" x2="8" y2="13"></line>
             <line x1="16" y1="17" x2="8" y2="17"></line>
           </svg>
-          API Dokümanları (/docs)
+          Swagger API (/docs)
         </a>
-        <button class="btn btn-secondary btn-sm" id="seedDataBtn" style="background: rgba(16, 185, 129, 0.15); border-color: #10b981; color: #a7f3d0; font-weight: 600;" title="Veritabanına 50 mezun tohum verisi ekler">
-          🌱 50 Mezun Ekle (Seed)
+        <button class="btn btn-secondary btn-sm" id="seedDataBtn" style="background: rgba(16, 185, 129, 0.15); border-color: #10b981; color: #a7f3d0; font-weight: 600;" title="Veritabanına mezun, iş ilanı ve başvuru tohum verisi ekler">
+          🌱 Tohumla (Seed All)
+        </button>
+        <button class="btn btn-secondary btn-sm" id="openAddJobNavBtn" onclick="openAddJobModal()">
+          💼 + Yeni İlan
         </button>
         <button class="btn btn-primary" id="openAddModalBtn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -85,20 +88,21 @@
           </svg>
         </div>
         <div class="stat-content">
-          <span class="stat-label">Aktif Bölümler</span>
-          <h2 class="stat-value" id="statDepartments">0</h2>
+          <span class="stat-label">Aktif İş İlanları (1:N)</span>
+          <h2 class="stat-value" id="statTotalJobs">0</h2>
         </div>
       </div>
 
       <div class="stat-card">
         <div class="stat-icon-wrapper icon-emerald">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
           </svg>
         </div>
         <div class="stat-content">
-          <span class="stat-label">Sistem Durumu (Week 1-3)</span>
-          <h2 class="stat-value stat-highlight" id="statStatus">REST Aktif</h2>
+          <span class="stat-label">Yapılan Başvurular (N:M)</span>
+          <h2 class="stat-value stat-highlight" id="statTotalApps">0</h2>
         </div>
       </div>
 
@@ -107,32 +111,31 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="2" y1="12" x2="22" y2="12"></line>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z"></path>
           </svg>
         </div>
         <div class="stat-content">
           <span class="stat-label">Mimari / Altyapı</span>
-          <h2 class="stat-value" style="font-size: 1.15rem;">FastAPI + Docker</h2>
+          <h2 class="stat-value" style="font-size: 1.15rem;">FastAPI + SQLAlchemy</h2>
         </div>
       </div>
     </section>
 
-    <!-- Week 5 Database & Migration Status Banner -->
+    <!-- Week 5 & 6 Relational Architecture Banner -->
     <section class="card" style="background: linear-gradient(135deg, #064e3b 0%, #0f172a 100%); border: 1px solid #059669; border-radius: 12px; padding: 1.1rem 1.4rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; box-shadow: 0 4px 20px rgba(5, 150, 105, 0.15);">
       <div style="display: flex; align-items: center; gap: 1rem;">
         <div style="background: rgba(16, 185, 129, 0.18); border: 1px solid #10b981; border-radius: 10px; width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
-          💾
+          🔗
         </div>
         <div>
           <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-            <h3 style="margin: 0; font-size: 1.05rem; color: #f8fafc; font-weight: 700;">Kalıcı Veritabanı & Şema Migrasyonu (Week 5)</h3>
-            <span style="background: #10b981; color: #022c22; font-size: 0.72rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 999px;">SQLITE + ALEMBIC AKTİF</span>
+            <h3 style="margin: 0; font-size: 1.05rem; color: #f8fafc; font-weight: 700;">İlişkisel Veri Modeli (Week 6 - Relational & Advanced Routing)</h3>
+            <span style="background: #10b981; color: #022c22; font-size: 0.72rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 999px;">1:N & N:M AKTİF</span>
           </div>
           <p style="margin: 0.35rem 0 0 0; font-size: 0.88rem; color: #cbd5e1;">
-            <strong>Veritabanı:</strong> <code>alumni.db</code> &nbsp;|&nbsp; 
-            <strong>ORM:</strong> SQLAlchemy 2.1 &nbsp;|&nbsp; 
-            <strong>Alembic Versiyonu:</strong> <code id="alembicRevBadge" style="background: #1e293b; color: #fbbf24; padding: 0.15rem 0.45rem; border-radius: 4px; border: 1px solid #475569;">4b4900ce1c26</code> &nbsp;|&nbsp;
-            <strong>Kalıcılık:</strong> <span style="color: #6ee7b7; font-weight: 600;">Disk / Docker Volume Destekli</span>
+            <strong>Tablolar:</strong> <code>users</code> ◄──(1:N)── <code>job_postings</code> ◄──(N:M via <code>applications</code>) &nbsp;|&nbsp; 
+            <strong>Silme Kuralı:</strong> <code style="color: #fde047;">RESTRICT</code> &nbsp;|&nbsp;
+            <strong>Alembic:</strong> <code id="alembicRevBadge" style="background: #1e293b; color: #fbbf24; padding: 0.15rem 0.45rem; border-radius: 4px; border: 1px solid #475569;">8f1c4e2a3b5d</code>
           </p>
         </div>
       </div>
@@ -146,92 +149,214 @@
       </div>
     </section>
 
-    <!-- Controls Bar -->
-    <section class="controls-card">
-      <div class="search-box">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <input type="text" id="searchInput" placeholder="İsim, e-posta veya bölüm ile ara..." autocomplete="off">
-        <button id="clearSearchBtn" class="clear-btn" style="display: none;">&times;</button>
-      </div>
+    <!-- Navigation Tabs (Week 6 Multi-Entity Switcher) -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" id="tabBtnAlumni" onclick="switchMainTab('alumni')">
+        🎓 Mezunlar (Alumni) <span class="tab-counter" id="tabCounterAlumni">0</span>
+      </button>
+      <button class="tab-btn" id="tabBtnJobs" onclick="switchMainTab('jobs')">
+        💼 İş İlanları (Job Postings) <span class="tab-counter" id="tabCounterJobs">0</span>
+      </button>
+      <button class="tab-btn" id="tabBtnApps" onclick="switchMainTab('applications')">
+        📋 Başvurular (Applications) <span class="tab-counter" id="tabCounterApps">0</span>
+      </button>
+    </div>
 
-      <div class="filter-group">
-        <label for="deptFilter" class="filter-label">Bölüm Filtresi:</label>
-        <select id="deptFilter" class="custom-select">
-          <option value="">Tüm Bölümler</option>
-        </select>
-      </div>
+    <!-- ======================================================== -->
+    <!-- TAB 1: ALUMNI (MEZUNLAR) -->
+    <!-- ======================================================== -->
+    <div id="alumniTabContent">
+      <!-- Controls Bar -->
+      <section class="controls-card">
+        <div class="search-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="searchInput" placeholder="İsim, e-posta veya bölüm ile ara..." autocomplete="off">
+          <button id="clearSearchBtn" class="clear-btn" style="display: none;">&times;</button>
+        </div>
 
-      <div class="view-toggles">
-        <button class="view-btn active" id="viewTableBtn" title="Tablo Görünümü">
+        <div class="filter-group">
+          <label for="deptFilter" class="filter-label">Bölüm Filtresi:</label>
+          <select id="deptFilter" class="custom-select">
+            <option value="">Tüm Bölümler</option>
+          </select>
+        </div>
+
+        <div class="view-toggles">
+          <button class="view-btn active" id="viewTableBtn" title="Tablo Görünümü">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+          </button>
+          <button class="view-btn" id="viewGridBtn" title="Kart Görünümü">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+          </button>
+          <button class="btn btn-secondary btn-icon" id="refreshBtn" title="Yenile">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- Data Presentation Container -->
+      <section class="content-section">
+        <!-- Loading State -->
+        <div id="loadingSpinner" class="loading-state" style="display: none;">
+          <div class="spinner"></div>
+          <p>Mezun bilgileri yükleniyor...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+          <div class="empty-icon">🎓</div>
+          <h3>Eşleşen Mezun Bulunamadı</h3>
+          <p>Arama filtrenizi temizleyebilir ya da yeni bir mezun kaydı ekleyebilirsiniz.</p>
+          <button class="btn btn-primary" onclick="openAddModal()">Yeni Mezun Ekle</button>
+        </div>
+
+        <!-- Table View -->
+        <div id="tableView" class="table-responsive">
+          <table class="alumni-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Mezun Adı Soyadı</th>
+                <th>E-posta</th>
+                <th>Bölüm</th>
+                <th style="width: 260px; text-align: right;">İşlemler (CRUD & Nested)</th>
+              </tr>
+            </thead>
+            <tbody id="alumniTableBody">
+              <!-- Dynamic rows will be inserted here -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Grid Cards View -->
+        <div id="gridView" class="alumni-grid" style="display: none;">
+          <!-- Dynamic cards will be inserted here -->
+        </div>
+      </section>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- TAB 2: JOB POSTINGS (İŞ İLANLARI - WEEK 6) -->
+    <!-- ======================================================== -->
+    <div id="jobsTabContent" style="display: none;">
+      <section class="controls-card" style="justify-content: space-between;">
+        <div class="search-box" style="max-width: 380px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-        </button>
-        <button class="view-btn" id="viewGridBtn" title="Kart Görünümü">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="7" height="7"></rect>
-            <rect x="14" y="3" width="7" height="7"></rect>
-            <rect x="14" y="14" width="7" height="7"></rect>
-            <rect x="3" y="14" width="7" height="7"></rect>
-          </svg>
-        </button>
-        <button class="btn btn-secondary btn-icon" id="refreshBtn" title="Yenile">
+          <input type="text" id="jobSearchInput" placeholder="Pozisyon veya şirket ile ara..." autocomplete="off">
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button class="btn btn-secondary btn-icon" onclick="loadJobs()" title="İlanları Yenile">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
+          <button class="btn btn-primary" onclick="openAddJobModal()">
+            💼 + Yeni İş İlanı Aç
+          </button>
+        </div>
+      </section>
+
+      <section class="content-section">
+        <div id="jobsLoadingSpinner" class="loading-state" style="display: none;">
+          <div class="spinner"></div>
+          <p>İş ilanları yükleniyor...</p>
+        </div>
+        <div id="jobsEmptyState" class="empty-state" style="display: none;">
+          <div class="empty-icon">💼</div>
+          <h3>Henüz Açılmış Bir İş İlanı Yok</h3>
+          <p>Mezunlar adına yeni iş ilanı oluşturabilir ya da tohum verisi ekleyebilirsiniz.</p>
+          <button class="btn btn-primary" onclick="openAddJobModal()">Yeni İlan Ekle</button>
+        </div>
+        <div class="table-responsive" id="jobsTableWrapper">
+          <table class="alumni-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Pozisyon Başlığı</th>
+                <th>Şirket</th>
+                <th>İlanı Açan Mezun (user_id)</th>
+                <th>Başvuru Durumu</th>
+                <th style="width: 250px; text-align: right;">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody id="jobsTableBody">
+              <!-- Filled dynamically by loadJobs() -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- TAB 3: APPLICATIONS (BAŞVURULAR - WEEK 6) -->
+    <!-- ======================================================== -->
+    <div id="applicationsTabContent" style="display: none;">
+      <section class="controls-card" style="justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <span style="font-weight: 700; color: #f8fafc; font-size: 1.05rem;">📋 Tüm İş Başvuruları (Join Table)</span>
+          <span style="font-size: 0.82rem; color: #94a3b8;">UNIQUE(user_id, job_posting_id) ile korunur</span>
+        </div>
+        <button class="btn btn-secondary btn-icon" onclick="loadApplications()" title="Başvuruları Yenile">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M23 4v6h-6"></path>
             <path d="M1 20v-6h6"></path>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>
         </button>
-      </div>
-    </section>
+      </section>
 
-    <!-- Data Presentation Container -->
-    <section class="content-section">
-      <!-- Loading State -->
-      <div id="loadingSpinner" class="loading-state" style="display: none;">
-        <div class="spinner"></div>
-        <p>Mezun bilgileri yükleniyor...</p>
-      </div>
-
-      <!-- Empty State -->
-      <div id="emptyState" class="empty-state" style="display: none;">
-        <div class="empty-icon">🎓</div>
-        <h3>Eşleşen Mezun Bulunamadı</h3>
-        <p>Arama filtrenizi temizleyebilir ya da yeni bir mezun kaydı ekleyebilirsiniz.</p>
-        <button class="btn btn-primary" onclick="openAddModal()">Yeni Mezun Ekle</button>
-      </div>
-
-      <!-- Table View -->
-      <div id="tableView" class="table-responsive">
-        <table class="alumni-table">
-          <thead>
-            <tr>
-              <th style="width: 70px;">ID</th>
-              <th>Mezun Adı Soyadı</th>
-              <th>E-posta</th>
-              <th>Bölüm</th>
-              <th style="width: 170px; text-align: right;">İşlemler (CRUD)</th>
-            </tr>
-          </thead>
-          <tbody id="alumniTableBody">
-            <!-- Dynamic rows will be inserted here -->
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Grid Cards View -->
-      <div id="gridView" class="alumni-grid" style="display: none;">
-        <!-- Dynamic cards will be inserted here -->
-      </div>
-    </section>
+      <section class="content-section">
+        <div id="appsLoadingSpinner" class="loading-state" style="display: none;">
+          <div class="spinner"></div>
+          <p>Başvurular yükleniyor...</p>
+        </div>
+        <div id="appsEmptyState" class="empty-state" style="display: none;">
+          <div class="empty-icon">📋</div>
+          <h3>Henüz Başvuru Bulunmuyor</h3>
+          <p>İş ilanları sekmesine gidip "Başvur" butonunu kullanarak yeni başvuru yapabilirsiniz.</p>
+        </div>
+        <div class="table-responsive" id="appsTableWrapper">
+          <table class="alumni-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Başvuran Mezun (user_id)</th>
+                <th>Başvurulan İlan (job_id)</th>
+                <th>Mevcut Durum</th>
+                <th style="width: 250px; text-align: right;">Durum Değiştir / Yönet</th>
+              </tr>
+            </thead>
+            <tbody id="appsTableBody">
+              <!-- Filled dynamically by loadApplications() -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
 
     <!-- Live API Event Log Drawer / Console -->
     <section class="api-console-section">
@@ -241,26 +366,27 @@
             <polyline points="4 17 10 11 4 5"></polyline>
             <line x1="12" y1="19" x2="20" y2="19"></line>
           </svg>
-          <span>Canlı REST API İşlem Konsolu (Week 1, 2, 3 İstekleri)</span>
+          <span>Canlı REST API İşlem Konsolu (Week 1–6 İstekleri)</span>
           <span class="badge badge-subtle" id="consoleBadge">Son İşlem</span>
         </div>
         <span class="console-toggle-icon">▾</span>
       </div>
       <div class="console-body" id="consoleBody">
         <div class="console-log" id="consoleLog">
-          <div class="log-entry log-init">
-            <span class="log-time">00:00:00</span>
-            <span class="log-method method-get">GET</span>
-            <span class="log-path">/api/health</span>
-            <span class="log-res text-green">200 OK</span>
-            <span class="log-msg">Sistem hazır ve bağlandı.</span>
+          <div class="log-entry log-info">
+            <span class="log-time">[Başlatıldı]</span>
+            <span class="log-msg">Sistem hazır. REST API uç noktaları dinleniyor.</span>
           </div>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Add User Modal (POST /api/users) -->
+  <!-- ======================================================== -->
+  <!-- MODALS -->
+  <!-- ======================================================== -->
+
+  <!-- Add User Modal -->
   <div class="modal-backdrop" id="addModal">
     <div class="modal-card">
       <div class="modal-header">
@@ -273,44 +399,31 @@
       <form id="addUserForm" onsubmit="handleCreateUser(event)">
         <div class="modal-body">
           <div class="form-group">
-            <label for="addUserId">Kullanıcı ID <span class="label-hint">(Opsiyonel - Boş bırakılırsa otomatik verilir)</span></label>
-            <input type="number" id="addUserId" placeholder="Örn: 3 (Mevcut ID girilirse 400 döner)" min="1">
+            <label for="addUserId">Özel ID (Opsiyonel)</label>
+            <input type="number" id="addUserId" placeholder="Otomatik için boş bırakın">
           </div>
-
           <div class="form-group">
             <label for="addUserName">Ad Soyad <span class="required">*</span></label>
-            <input type="text" id="addUserName" required placeholder="Örn: Osman Parlak">
+            <input type="text" id="addUserName" required placeholder="Örn: Ada Lovelace">
           </div>
-
           <div class="form-group">
             <label for="addUserEmail">E-posta Adresi <span class="required">*</span></label>
-            <input type="email" id="addUserEmail" required placeholder="Örn: osman@example.com">
+            <input type="email" id="addUserEmail" required placeholder="Örn: ada@iu.edu.tr">
           </div>
-
           <div class="form-group">
             <label for="addUserDepartment">Bölüm <span class="required">*</span></label>
-            <input type="text" id="addUserDepartment" required placeholder="Örn: MIS veya Computer Engineering" list="deptSuggestions">
-            <datalist id="deptSuggestions">
-              <option value="MIS">
-              <option value="Computer Engineering">
-              <option value="Industrial Engineering">
-              <option value="Software Engineering">
-              <option value="Electrical Engineering">
-              <option value="Business Administration">
-            </datalist>
+            <input type="text" id="addUserDepartment" required placeholder="Örn: Computer Engineering">
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">İptal</button>
-          <button type="submit" class="btn btn-primary" id="saveAddBtn">
-            <span>Kaydet & Gönder</span>
-          </button>
+          <button type="submit" class="btn btn-primary" id="saveAddBtn">Kaydet & Gönder</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Edit User Modal (PUT / PATCH /api/users/:id) -->
+  <!-- Edit User Modal -->
   <div class="modal-backdrop" id="editModal">
     <div class="modal-card">
       <div class="modal-header">
@@ -323,55 +436,48 @@
       <form id="editUserForm" onsubmit="handleUpdateUser(event)">
         <input type="hidden" id="editUserId">
         <div class="modal-body">
-          <!-- Update Type Switch (PUT vs PATCH demonstration) -->
           <div class="method-selector">
             <label class="method-option">
               <input type="radio" name="updateMethod" value="PUT" checked onchange="handleMethodToggle('PUT')">
               <div class="method-box">
                 <span class="method-tag tag-put">PUT</span>
-                <span class="method-desc">Tam Güncelleme (Tüm alanlar zorunlu)</span>
+                <span class="method-desc">Tam Güncelleme</span>
               </div>
             </label>
             <label class="method-option">
               <input type="radio" name="updateMethod" value="PATCH" onchange="handleMethodToggle('PATCH')">
               <div class="method-box">
                 <span class="method-tag tag-patch">PATCH</span>
-                <span class="method-desc">Kısmi Güncelleme (Yalnızca değişen alanlar)</span>
+                <span class="method-desc">Kısmi Güncelleme</span>
               </div>
             </label>
           </div>
-
           <div class="form-group">
             <label>Mezun ID</label>
             <input type="text" id="displayEditId" disabled class="input-disabled">
           </div>
-
           <div class="form-group">
-            <label for="editUserName">Ad Soyad <span class="required" id="nameRequired">*</span></label>
-            <input type="text" id="editUserName" required placeholder="Ad Soyad">
+            <label for="editUserName">Ad Soyad <span class="required">*</span></label>
+            <input type="text" id="editUserName" required>
           </div>
-
           <div class="form-group">
-            <label for="editUserEmail">E-posta Adresi <span class="required" id="emailRequired">*</span></label>
-            <input type="email" id="editUserEmail" required placeholder="E-posta">
+            <label for="editUserEmail">E-posta <span class="required">*</span></label>
+            <input type="email" id="editUserEmail" required>
           </div>
-
           <div class="form-group">
-            <label for="editUserDepartment">Bölüm <span class="required" id="deptRequired">*</span></label>
-            <input type="text" id="editUserDepartment" required placeholder="Bölüm" list="deptSuggestions">
+            <label for="editUserDepartment">Bölüm <span class="required">*</span></label>
+            <input type="text" id="editUserDepartment" required>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">İptal</button>
-          <button type="submit" class="btn btn-primary" id="saveEditBtn">
-            <span>Güncellemeyi Kaydet</span>
-          </button>
+          <button type="submit" class="btn btn-primary" id="saveEditBtn">Kaydet</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Delete Confirmation Modal (DELETE /api/users/:id) -->
+  <!-- Delete User Modal (with RESTRICT Warning) -->
   <div class="modal-backdrop" id="deleteModal">
     <div class="modal-card modal-card-sm">
       <div class="modal-header">
@@ -384,36 +490,121 @@
       <div class="modal-body">
         <input type="hidden" id="deleteUserId">
         <p class="delete-warning-text">
-          <strong id="deleteUserName"></strong> adlı mezun kaydı kalıcı olarak silinecektir. Bu işlem geri alınamaz.
+          <strong id="deleteUserName"></strong> adlı mezun kaydı silinecektir.
         </p>
-        <div class="api-target-info">
-          <span>İstek:</span> <code>DELETE /api/users/<span id="deleteTargetId">1</span></code>
-        </div>
+        <p style="font-size: 0.82rem; color: #fbbf24; margin-top: 0.5rem; background: rgba(245, 158, 11, 0.1); padding: 0.5rem; border-radius: 6px;">
+          ⚠️ <strong>RESTRICT Kuralı:</strong> Bu mezuna ait aktif iş ilanı varsa veritabanı silmeye izin vermez ve <strong>409 Conflict</strong> hatası döner.
+        </p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="closeModal('deleteModal')">Vazgeç</button>
-        <button type="button" class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDeleteUser()">
-          <span>Evet, Sil (204)</span>
-        </button>
+        <button type="button" class="btn btn-danger" onclick="confirmDeleteUser()">Evet, Sil (204)</button>
       </div>
     </div>
   </div>
 
-  <!-- User Detail View Modal (GET /api/users/:id) -->
+  <!-- User Detail View Modal (GET /api/users/:id?include=jobs) -->
   <div class="modal-backdrop" id="detailModal">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title-wrap">
-          <span class="badge badge-get">GET /api/users/:id</span>
-          <h3>Mezun Profil Detayı</h3>
+          <span class="badge badge-get">GET /api/users/:id?include=jobs</span>
+          <h3>Mezun & İlan Detayı (Include)</h3>
         </div>
         <button class="modal-close" onclick="closeModal('detailModal')">&times;</button>
       </div>
-      <div class="modal-body" id="detailModalBody">
-        <!-- Filled by JS -->
-      </div>
+      <div class="modal-body" id="detailModalBody"></div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="closeModal('detailModal')">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Job Posting Modal (POST /api/users/:id/jobs - Nested Route) -->
+  <div class="modal-backdrop" id="addJobModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="badge badge-post">POST /api/users/:id/jobs</span>
+          <h3>Yeni İş İlanı Aç (Nested Route)</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('addJobModal')">&times;</button>
+      </div>
+      <form id="addJobForm" onsubmit="handleCreateJob(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="jobOwnerSelect">İlanı Açan Mezun (:id) <span class="required">*</span></label>
+            <select id="jobOwnerSelect" required class="custom-select" style="width: 100%;">
+              <option value="">Mezun Seçin...</option>
+            </select>
+            <small style="color: #94a3b8; font-size: 0.8rem;">İlan sahibini URL yolu belirler (Whose posting? The URL says).</small>
+          </div>
+          <div class="form-group">
+            <label for="jobTitle">Pozisyon Başlığı <span class="required">*</span></label>
+            <input type="text" id="jobTitle" required placeholder="Örn: Junior Developer, Backend Intern">
+          </div>
+          <div class="form-group">
+            <label for="jobCompany">Şirket / Kurum <span class="required">*</span></label>
+            <input type="text" id="jobCompany" required placeholder="Örn: Acme Corp, Trendyol, Google">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('addJobModal')">İptal</button>
+          <button type="submit" class="btn btn-primary">İlanı Yayınla (201)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Apply to Job Modal (POST /api/jobs/:id/applications) -->
+  <div class="modal-backdrop" id="applyJobModal">
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="badge badge-post">POST /api/jobs/:id/applications</span>
+          <h3>İlana Başvuru Yap</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('applyJobModal')">&times;</button>
+      </div>
+      <form id="applyJobForm" onsubmit="handleApplyToJob(event)">
+        <input type="hidden" id="applyJobId">
+        <div class="modal-body">
+          <p style="margin-bottom: 1rem; color: #cbd5e1;">
+            Başvurulan İlan: <strong id="applyJobTitle" style="color: #f8fafc;"></strong> (<span id="applyJobCompany"></span>)
+          </p>
+          <div class="form-group">
+            <label for="applicantUserSelect">Başvuran Mezun (userId) <span class="required">*</span></label>
+            <select id="applicantUserSelect" required class="custom-select" style="width: 100%;">
+              <option value="">Mezun Seçin...</option>
+            </select>
+          </div>
+          <p style="font-size: 0.8rem; color: #94a3b8;">
+            * UNIQUE(user_id, job_posting_id) kısıtlaması nedeniyle aynı mezun bu ilana tekrar başvurursa sistem <strong>409 Conflict</strong> döndürecektir.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('applyJobModal')">Vazgeç</button>
+          <button type="submit" class="btn btn-primary">Başvuruyu Gönder (201)</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- View Applicants Modal (GET /api/jobs/:id/applicants) -->
+  <div class="modal-backdrop" id="applicantsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="badge badge-get">GET /api/jobs/:id/applicants</span>
+          <h3 id="applicantsModalTitle">İlana Başvuran Mezunlar</h3>
+        </div>
+        <button class="modal-close" onclick="closeModal('applicantsModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="applicantsModalBody">
+        <!-- Dynamic list of applicant users -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('applicantsModal')">Kapat</button>
       </div>
     </div>
   </div>
@@ -423,13 +614,15 @@
 
   <footer class="portal-footer">
     <div class="footer-container">
-      <p>© 2026 Üniversite Mezun Takip Sistemi • Python FastAPI + Docker Mimarisi</p>
+      <p>© 2026 Üniversite Mezun Takip Sistemi • Python FastAPI + SQLAlchemy + Docker</p>
       <div class="footer-links">
         <a href="/api/health" target="_blank">Sağlık Kontrolü (/api/health)</a>
         <span>•</span>
-        <a href="/api/users" target="_blank">Kullanıcı JSON (/api/users)</a>
+        <a href="/api/users" target="_blank">Kullanıcılar JSON (/api/users)</a>
         <span>•</span>
-        <a href="/docs" target="_blank">Swagger API UI</a>
+        <a href="/api/jobs" target="_blank">İlanlar JSON (/api/jobs)</a>
+        <span>•</span>
+        <a href="/api/applications" target="_blank">Başvurular JSON (/api/applications)</a>
       </div>
     </div>
   </footer>

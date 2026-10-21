@@ -175,16 +175,20 @@ async def health_check():
     return {"status": "ok", "message": "Alumni System API is healthy and running"}
 
 
-@app.post("/api/seed", summary="Seed Database with Fake Alumni Records", tags=["Week 1 - Core & Utilities"])
+@app.post("/api/seed", summary="Seed Database with Fake Alumni Records, Jobs & Applications", tags=["Week 1 - Core & Utilities"])
 async def trigger_seed(count: int = 50, reset: bool = False):
-    """[Week 5: Factory & Seeder] Seeds the database with realistic alumni using UserFactory."""
-    from seed import seed_users
-    total = seed_users(count=count, reset=reset)
+    """[Week 5 & 6: Factory & Seeder] Seeds the database with realistic alumni, jobs, and applications."""
+    from seed import seed_database_all
+    totals = seed_database_all(
+        users_count=count,
+        jobs_count=max(5, count // 3),
+        apps_count=max(8, count // 2),
+        reset=reset
+    )
     return {
         "status": "success",
-        "message": f"Successfully seeded {count} alumni records",
-        "seeded_count": count,
-        "total_records": total
+        "message": f"Successfully seeded {count} alumni, jobs, and applications",
+        "totals": totals
     }
 
 

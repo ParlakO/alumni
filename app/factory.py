@@ -1,6 +1,5 @@
 import random
-from typing import List, Optional
-from app.database import UserRecord
+from typing import List, Optional, Set, Tuple
 
 
 class UserFactory:
@@ -76,11 +75,109 @@ class UserFactory:
 
     @classmethod
     def create_batch(cls, count: int = 50, start_id: Optional[int] = None) -> List[dict]:
-        """
-        Generates a batch of fake alumni records.
-        """
+        """Generates a batch of fake alumni records."""
         records = []
         for i in range(count):
             uid = (start_id + i) if start_id is not None else None
             records.append(cls.create_fake_user(user_id=uid))
+        return records
+
+
+class JobPostingFactory:
+    """
+    Factory Pattern for generating realistic Job Postings.
+    Associates each posting with an owner alumni (user_id).
+    """
+
+    JOB_TITLES = [
+        "Backend Intern",
+        "Data Analyst",
+        "Junior Developer",
+        "QA Tester",
+        "Full Stack Engineer",
+        "Frontend Developer (React/Vue)",
+        "DevOps Engineer",
+        "Machine Learning Engineer",
+        "Mobile App Developer",
+        "Cybersecurity Analyst",
+        "Cloud Solutions Architect",
+        "Product Specialist"
+    ]
+
+    COMPANIES = [
+        "Acme Corp",
+        "TechCorp",
+        "Trendyol",
+        "Getir",
+        "Google",
+        "Microsoft",
+        "Garanti BBVA",
+        "Hepsiburada",
+        "Aselsan",
+        "Baykar",
+        "Peak Games",
+        "Amazon Web Services"
+    ]
+
+    @classmethod
+    def create_fake_job(cls, user_id: int, job_id: Optional[int] = None) -> dict:
+        """Generates a single fake job posting."""
+        data = {
+            "user_id": user_id,
+            "title": random.choice(cls.JOB_TITLES),
+            "company": random.choice(cls.COMPANIES)
+        }
+        if job_id is not None:
+            data["id"] = job_id
+        return data
+
+    @classmethod
+    def create_batch(cls, user_ids: List[int], count: int = 15, start_id: int = 10) -> List[dict]:
+        """Generates a batch of job postings distributed among given user IDs."""
+        if not user_ids:
+            return []
+        records = []
+        for i in range(count):
+            uid = random.choice(user_ids)
+            records.append(cls.create_fake_job(user_id=uid, job_id=start_id + i))
+        return records
+
+
+class ApplicationFactory:
+    """
+    Factory Pattern for generating unique Job Applications.
+    Guarantees UNIQUE(user_id, job_posting_id) composite constraint.
+    """
+
+    STATUSES = ["applied", "interview", "accepted", "rejected"]
+
+    @classmethod
+    def create_batch(
+        cls,
+        user_ids: List[int],
+        job_ids: List[int],
+        count: int = 25,
+        start_id: int = 1
+    ) -> List[dict]:
+        """Generates unique applications between users and job postings."""
+        if not user_ids or not job_ids:
+            return []
+
+        pairs: Set[Tuple[int, int]] = set()
+        max_possible = len(user_ids) * len(job_ids)
+        target_count = min(count, max_possible)
+
+        while len(pairs) < target_count:
+            u = random.choice(user_ids)
+            j = random.choice(job_ids)
+            pairs.add((u, j))
+
+        records = []
+        for idx, (u, j) in enumerate(pairs):
+            records.append({
+                "id": start_id + idx,
+                "user_id": u,
+                "job_posting_id": j,
+                "status": random.choice(cls.STATUSES)
+            })
         return records
