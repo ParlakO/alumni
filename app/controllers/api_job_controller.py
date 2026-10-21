@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, status, Response, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import (
+    User,
     JobPostingResponse,
     ApplicationCreate,
     ApplicationResponse,
@@ -100,3 +101,23 @@ async def get_job_applications(
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job posting not found")
     return application_model.get_by_job_id(job_posting_id=job_id, db=db)
+
+
+# --- 6. GET /api/jobs/:id/applicants (List applicant users for a job) ---
+@router.get(
+    "/{job_id}/applicants",
+    response_model=List[User],
+    summary="[Applications Route] List all applicant users who applied for a job"
+)
+async def get_job_applicants(
+    job_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Returns the list of User objects (applicants) who applied to job posting (:id).
+    (Week 06: 'the two lists of applicants and applications')
+    """
+    try:
+        return application_model.get_applicants_by_job_id(job_posting_id=job_id, db=db)
+    except KeyError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

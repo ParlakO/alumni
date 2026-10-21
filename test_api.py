@@ -214,6 +214,38 @@ async def main():
         assert e.status_code == 409
         print("PASS: [Delete Rule] DELETE /api/users/1 with active jobs -> 409 Conflict (RESTRICT rule)")
 
+    # 5.8 Applications Two Lists: Applications vs Applicants
+    from app.controllers.api_job_controller import get_job_applicants
+    from app.controllers.api_application_controller import (
+        get_all_applications, get_application_by_id, update_application_status, delete_application
+    )
+    from app.models import ApplicationStatusUpdate
+
+    job_apps = await get_job_applications(job_id=new_job["id"])
+    assert len(job_apps) >= 1
+    print(f"PASS: [Two Lists - 1] GET /api/jobs/:id/applications -> {len(job_apps)} applications")
+
+    job_applicants = await get_job_applicants(job_id=new_job["id"])
+    assert len(job_applicants) >= 1
+    assert job_applicants[0]["id"] == 2
+    print(f"PASS: [Two Lists - 2] GET /api/jobs/:id/applicants -> {len(job_applicants)} applicants (User objects)")
+
+    # 5.9 Direct Applications CRUD: List, Get, Patch Status, Delete
+    all_apps = await get_all_applications()
+    assert len(all_apps) >= 1
+    print(f"PASS: [Direct App Route] GET /api/applications -> {len(all_apps)} total applications")
+
+    patched_app = await update_application_status(
+        application_id=app_result["id"],
+        status_in=ApplicationStatusUpdate(status="interview")
+    )
+    assert patched_app["status"] == "interview"
+    print("PASS: [Direct App Route] PATCH /api/applications/:id -> status updated to 'interview'")
+
+    del_app = await delete_application(application_id=app_result["id"])
+    assert del_app.status_code == 204
+    print("PASS: [Direct App Route] DELETE /api/applications/:id -> 204 No Content")
+
     print("\n=============================================================")
     print("  ALL TESTS PASSED SUCCESSFULLY! (Direct & Nested Routes OK)")
     print("=============================================================")

@@ -368,6 +368,25 @@ POST /api/users/:id/jobs ──► Controller ──► Model (User.exists(:id)?
 
 ---
 
+### 5.10. İki Liste Prensibi: Başvurular (`applications`) vs. Başvuranlar (`applicants`)
+> **Kural (The Two Lists):** Bir ilana kimlerin başvurduğunu sorgularken iki farklı görünüm ihtiyacı vardır:
+1. **Başvuru Kayıtları Listesi (`GET /api/jobs/:id/applications`):**
+   - Ara tablodaki ilişkisel veriyi döner (`id`, `user_id`, `job_posting_id`, `status`).
+   - Örnek: `[{ "id": 1, "user_id": 3, "job_posting_id": 10, "status": "applied" }]`
+2. **Başvuran Kullanıcılar Listesi (`GET /api/jobs/:id/applicants`):**
+   - İlana başvuran gerçek mezun kullanıcı profillerini (`User` nesneleri) döner.
+   - Örnek: `[{ "id": 3, "name": "Elif", "email": "elif@iu.edu.tr", "department": "Data Science" }]`
+
+---
+
+### 5.11. Doğrudan Başvuru Yönetimi (Direct Application CRUD)
+- **`GET /api/applications`:** Sistemdeki tüm başvuruları listeler.
+- **`GET /api/applications/:id`:** Belirli bir başvurunun detayını getirir.
+- **`PATCH /api/applications/:id`:** Başvuru durumunu günceller (`applied` ➔ `interview` ➔ `accepted` / `rejected`).
+- **`DELETE /api/applications/:id`:** Mezunun başvurusunu geri çekmesini sağlar (`204 No Content`).
+
+---
+
 ## 6. Konteyner Yaşam Döngüsü ve "Forgetting Test" (Statelessness)
 
 - Bellek içi modda çalışırken konteyner her yeniden başlatıldığında (`docker compose down && docker compose up`) veriler sıfırlanarak tohum verilerine döner.

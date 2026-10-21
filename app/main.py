@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.controllers import api_user_controller, user_controller, api_job_controller
+from app.controllers import api_user_controller, user_controller, api_job_controller, api_application_controller
 
 # ===================================================================
 # SWAGGER & APPLICATION CONFIGURATION (WEEK 1 - WEEK 6 PROGRESSION)
@@ -198,7 +198,10 @@ app.include_router(api_user_controller.router)
 # Controller 2: /api/jobs (Direct Job Postings & Applications Routes)
 app.include_router(api_job_controller.router)
 
-# Controller 3: /users (View Layer)
+# Controller 3: /api/applications (Direct Applications Management Routes)
+app.include_router(api_application_controller.router)
+
+# Controller 4: /users (View Layer)
 app.include_router(user_controller.router)
 
 

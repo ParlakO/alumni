@@ -80,6 +80,10 @@ class ApplicationResponse(BaseModel):
     status: str = "applied"
 
 
+class ApplicationStatusUpdate(BaseModel):
+    status: str = Field(..., example="interview", description="New application status: applied, interview, accepted, rejected")
+
+
 # --- 4. Include / Nested Schemas ---
 class UserWithJobs(User):
     """
@@ -401,6 +405,70 @@ class ApplicationModel:
                 ApplicationRecord.user_id == user_id
             ).all()
             return [a.to_dict() for a in apps]
+        finally:
+            if close_needed:
+                session.close()
+
+    def get_all(self, db: Optional[Any] = None) -> List[dict]:
+        """Returns all applications in the system."""
+        session, close_needed = self._get_session(db)
+        try:
+            apps = session.query(ApplicationRecord).order_by(ApplicationRecord.id.asc()).all()
+            return [a.to_dict() for a in apps]
+        finally:
+            if close_needed:
+                session.close()
+
+    def get_by_id(self, application_id: int, db: Optional[Any] = None) -> Optional[dict]:
+        """Returns a single application by ID."""
+        session, close_needed = self._get_session(db)
+        try:
+            app = session.query(ApplicationRecord).filter(ApplicationRecord.id == application_id).first()
+            return app.to_dict() if app else None
+        finally:
+            if close_needed:
+                session.close()
+
+    def get_applicants_by_job_id(self, job_posting_id: int, db: Optional[Any] = None) -> List[dict]:
+        """
+        Returns the list of User objects (applicants) who applied to job_posting_id.
+        (Week 06: 'the two lists of applicants and applications')
+        """
+        session, close_needed = self._get_session(db)
+        try:
+            job = session.query(JobPostingRecord).filter(JobPostingRecord.id == job_posting_id).first()
+            if not job:
+                raise KeyError(f"Job posting with ID {job_posting_id} not found")
+            return [applicant.to_dict() for applicant in job.applicants]
+        finally:
+            if close_needed:
+                session.close()
+
+    def update_status(self, application_id: int, new_status: str, db: Optional[Any] = None) -> Optional[dict]:
+        """Updates the status of an application (e.g. applied -> interview -> accepted)."""
+        session, close_needed = self._get_session(db)
+        try:
+            app = session.query(ApplicationRecord).filter(ApplicationRecord.id == application_id).first()
+            if not app:
+                return None
+            app.status = new_status
+            session.commit()
+            session.refresh(app)
+            return app.to_dict()
+        finally:
+            if close_needed:
+                session.close()
+
+    def delete(self, application_id: int, db: Optional[Any] = None) -> bool:
+        """Withdraws or deletes an application."""
+        session, close_needed = self._get_session(db)
+        try:
+            app = session.query(ApplicationRecord).filter(ApplicationRecord.id == application_id).first()
+            if not app:
+                return False
+            session.delete(app)
+            session.commit()
+            return True
         finally:
             if close_needed:
                 session.close()
