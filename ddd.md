@@ -105,10 +105,16 @@ Mezunlar tarafından paylaşılan iş ilanlarını temsil eder. Bir ilanı mutla
 |:---|:---|:---:|:---:|:---|:---|
 | **`id`** | `Integer` | Evet | **PK** | `10` | İlanın benzersiz kimlik numarası. |
 | **`user_id`** | `Integer` | Evet | **FK** | `1` | İlanı oluşturan mezunun kimliği (`users.id` referansı). |
-| **`title`** | `String` | Evet | - | `"Backend Intern"` | İlan pozisyon başlığı. |
-| **`company`** | `String` | Evet | - | `"Acme"` | İlanı açan şirket/kurum adı. |
+| **`title`** | `String(120)` | Evet (Required) | - | `"Backend Intern"` | İlan pozisyon başlığı (Maksimum 120 karakter). |
+| **`company`** | `String(100)` | Evet (Required) | - | `"Acme"` | İlanı açan şirket/kurum adı. |
+| **`city`** | `String(100)` | Hayır (Optional) | - | `"Istanbul"` | İlanın bulunduğu şehir (İsteğe bağlı). |
+| **`description`** | `String(500)` | Hayır (Optional) | - | `"Backend geliştirici stajyeri..."` | İlan detay açıklaması (İsteğe bağlı). |
 
-**Kural:**
+**Kurallar & Kısıtlar (JobPosting Business Rules):**
+- `title required`: Pozisyon başlığı zorunludur.
+- `max 120 characters`: Başlık en fazla 120 karakter olabilir.
+- `company required`: Şirket adı zorunludur.
+- `city, description are optional`: Şehir ve açıklama alanları isteğe bağlıdır (opsiyonel).
 - `one user ➔ many postings`: Bir kullanıcı birden fazla iş ilanı oluşturabilir.
 - `each posting ➔ exactly one user`: Her ilanın tam olarak bir sahibi vardır.
 - `user_id` yabancı anahtardır (`FK ➔ users.id`).
@@ -219,13 +225,16 @@ Kullanıcılar ile iş ilanları arasındaki çoktan-çoka (Many-to-Many) ilişk
 
 ```python
 class JobPostingBase(BaseModel):
-    title: str = Field(..., min_length=2, max_length=150, example="Junior Developer")
-    company: str = Field(..., min_length=2, max_length=100, example="Acme")
+    title: str = Field(..., min_length=1, max_length=120, example="Junior Developer")
+    company: str = Field(..., min_length=1, max_length=100, example="Acme")
+    city: Optional[str] = Field(None, max_length=100, example="Istanbul")
+    description: Optional[str] = Field(None, example="FastAPI ve PostgreSQL ile backend geliştirme")
 
 class JobPostingCreate(JobPostingBase):
     """
     POST /api/users/:id/jobs için istek gövdesi.
     user_id gövdede yer ALMAZ, URL parametresinden (:id) alınır.
+    title zorunlu (max 120), company zorunlu, city ve description opsiyoneldir.
     """
     pass
 
@@ -423,8 +432,10 @@ class JobPostingRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
-    title = Column(String(150), nullable=False)
+    title = Column(String(120), nullable=False)
     company = Column(String(100), nullable=False)
+    city = Column(String(100), nullable=True)
+    description = Column(String(500), nullable=True)
 
     owner = relationship("UserRecord", back_populates="jobs")
     applications = relationship("ApplicationRecord", back_populates="job_posting", cascade="all, delete-orphan")
@@ -464,5 +475,53 @@ alembic upgrade head
 
 ## 8. Veri Üretim Fabrikası ve Tohumlama (Factory & Seeder Pattern)
 
-- [`app/factory.py`](app/factory.py) genişletilerek `JobPostingFactory` ve `ApplicationFactory` entegre edilebilir.
-- [`seed.py`](seed.py) çalıştırıldığında örnek olarak Ada, Can ve Elif kullanıcıları ile birlikte görseldeki 4 iş ilanı ve 3 iş başvurusu otomatik olarak tohumlanabilir.
+- [`app/factory.py`](app/factory.py) genişletilerek `JobPostingFactory` ve `ApplicationFactory` entegre edilmiştir (title, company, city, description).
+- [`seed.py`](seed.py) çalıştırıldığında örnek olarak Ada, Can ve Elif kullanıcıları ile birlikte iş ilanları ve başvurular otomatik olarak tohumlanır.
+
+---
+
+## 9. Middleware ve Hata Koruma Mimarisi (Guardians, Logger & Error Logs)
+
+Tahtada ve ders slaytlarında belirtilen kurallar doğrultusunda HTTP istek hattı (pipeline) middleware ve koruyucu yapılarla donatılmıştır:
+
+```
+[İstek] ➔ [Logger Middleware] ➔ [404 Guardian] ➔ [Method Override] ➔ [Router / Controller]
+              │                        │
+       Terminal Çıktısı        404 Reason / Redirect
+              │
+      [5xx Guardian] ➔ logs/error.logs ➔ 500 JSON / 500 HTML
+```
+
+### 9.1. Logger Middleware (Terminal Günlüğü)
+Her gelen isteği terminale şu formatta yazdırır:
+`time method route res type duration`
+
+**Örnek Çıktı:**
+```text
+10:20:30 POST /users 201 18ms
+10:20:35 GET /api/jobs 200 6ms
+10:20:40 GET /api/users/999 404 4ms
+```
+
+### 9.2. 404 Guardian Middleware
+- 404 durum kodlarını yakalar ve istemciye mutlaka açıklayıcı bir `reason` (gerekçe) döner.
+- **API İstekleri (`/api/...` veya JSON):**
+  ```json
+  {
+    "status_code": 404,
+    "error": "Not Found",
+    "reason": "The requested resource or endpoint '/api/unknown' was not found.",
+    "path": "/api/unknown"
+  }
+  ```
+- **Web Tarayıcısı İstekleri (HTML):**
+  Geçersiz sayfaları genel hata yakalama mekanizması üzerinden generic 404 sayfasına (`/404`) yönlendirir (`RedirectResponse(303)`).
+
+### 9.3. 5xx Guardian & Dosya Günlüğü (`logs/error.logs`)
+- Sunucuda beklenmeyen bir istisna meydana geldiğinde sunucu çökmez.
+- Hatanın zaman damgası, rotası, HTTP metodu, hata mesajı ve tam stack trace'i `logs/error.logs` dosyasına yazılır.
+- İstemciye standartlaştırılmış 500 yanıtı sunulur.
+
+### 9.4. Geçersiz İstekler (Invalid Requests & Validation)
+- İstek gövdesinde eksik alan (`title`, `company` eksikliği) veya karakter sınır aşımı (`title > 120`) durumunda Pydantic doğrulaması tetiklenir ve istemciye 400 Bad Request statüsü ile birlikte hatanın sebebini belirten açıklama döner.
+

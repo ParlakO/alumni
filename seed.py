@@ -81,7 +81,9 @@ def seed_database_all(
                 id=j["id"],
                 user_id=j["user_id"],
                 title=j["title"],
-                company=j["company"]
+                company=j["company"],
+                city=j.get("city"),
+                description=j.get("description")
             )
             for j in job_data
         ]

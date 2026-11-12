@@ -47,8 +47,10 @@ class User(UserBase):
 
 # --- 2. Job Posting Schemas ---
 class JobPostingBase(BaseModel):
-    title: str = Field(..., min_length=2, max_length=150, example="Junior Developer")
-    company: str = Field(..., min_length=2, max_length=100, example="Acme")
+    title: str = Field(..., min_length=1, max_length=120, example="Junior Developer")
+    company: str = Field(..., min_length=1, max_length=100, example="Acme")
+    city: Optional[str] = Field(None, max_length=100, example="Istanbul")
+    description: Optional[str] = Field(None, example="Full-stack developer with FastAPI experience")
 
 
 class JobPostingCreate(JobPostingBase):
@@ -279,7 +281,9 @@ class JobPostingModel:
             new_job = JobPostingRecord(
                 user_id=user_id,
                 title=job_data.title,
-                company=job_data.company
+                company=job_data.company,
+                city=job_data.city,
+                description=job_data.description
             )
             session.add(new_job)
             session.commit()

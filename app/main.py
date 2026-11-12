@@ -1,11 +1,16 @@
 import os
 from urllib.parse import parse_qs
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.controllers import api_user_controller, user_controller, api_job_controller, api_application_controller
+from app.logger import log_error_to_file
+from app.middleware import LoggerMiddleware, Guardian404Middleware
 
 # ===================================================================
 # SWAGGER & APPLICATION CONFIGURATION (WEEK 1 - WEEK 6 PROGRESSION)
@@ -74,6 +79,163 @@ class MethodOverrideMiddleware:
 
 
 app.add_middleware(MethodOverrideMiddleware)
+app.add_middleware(Guardian404Middleware)
+app.add_middleware(LoggerMiddleware)
+
+# Views directory for HTML templates
+VIEWS_DIR = os.path.join(os.path.dirname(__file__), "views")
+templates = Jinja2Templates(directory=VIEWS_DIR)
+
+
+# ===================================================================
+# GUARDIANS & EXCEPTION HANDLERS (404 Guardian & 5xx Guardian)
+# ===================================================================
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_guardian(request: Request, exc: StarletteHTTPException):
+    """
+    Guardian Middleware / Exception Handler for HTTP Errors.
+    - 404 Guardian: Returns structured 404 error with a clear reason.
+    - Generic 404 redirect for web browser requests.
+    - 5xx Guardian: Logs 5xx errors to logs/error.logs and returns clean error.
+    """
+    accept_header = request.headers.get("accept", "")
+    is_browser_request = "text/html" in accept_header and not request.url.path.startswith("/api")
+
+    if exc.status_code == 404:
+        # Browser request redirect to generic 404 page
+        if is_browser_request and request.url.path != "/404":
+            return RedirectResponse(url=f"/404?path={request.url.path}", status_code=303)
+
+        # API / JSON response with clear reason
+        detail = exc.detail
+        if detail == "Not Found":
+            detail = f"The requested resource or endpoint '{request.url.path}' was not found."
+
+        return JSONResponse(
+            status_code=404,
+            content={
+                "status_code": 404,
+                "error": "Not Found",
+                "reason": detail,
+                "path": request.url.path
+            }
+        )
+
+    if exc.status_code >= 500:
+        log_error_to_file(request.method, request.url.path, exc.status_code, str(exc.detail))
+        if is_browser_request:
+            return templates.TemplateResponse(
+                request,
+                "500.html",
+                {"title": "Sunucu Hatası", "path": request.url.path, "reason": str(exc.detail)},
+                status_code=exc.status_code
+            )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "status_code": exc.status_code,
+                "error": "Internal Server Error",
+                "reason": str(exc.detail),
+                "path": request.url.path
+            }
+        )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "status_code": exc.status_code,
+            "error": "HTTP Error",
+            "reason": str(exc.detail),
+            "detail": exc.detail,
+            "path": request.url.path
+        }
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_guardian(request: Request, exc: RequestValidationError):
+    """
+    Catches invalid request payloads (e.g. invalid JSON, missing required fields)
+    and returns a clean 400 Bad Request response with a descriptive reason.
+    """
+    reasons = []
+    for err in exc.errors():
+        loc = " -> ".join([str(x) for x in err.get("loc", []) if x != "body"])
+        msg = err.get("msg", "invalid")
+        reasons.append(f"{loc}: {msg}" if loc else msg)
+    reason_str = "; ".join(reasons) or "Validation failed"
+
+    return JSONResponse(
+        status_code=400,
+        content={
+            "status_code": 400,
+            "error": "Bad Request",
+            "reason": reason_str,
+            "detail": exc.errors(),
+            "path": request.url.path
+        }
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_5xx_guardian(request: Request, exc: Exception):
+    """
+    Middleware #5 & #6: 5xx Guardian
+    Catches all unhandled exceptions, writes stack traces to logs/error.logs,
+    and returns a clean, safe 500 response with reason.
+    """
+    log_error_to_file(request.method, request.url.path, 500, str(exc), exc)
+    accept_header = request.headers.get("accept", "")
+    is_browser_request = "text/html" in accept_header and not request.url.path.startswith("/api")
+
+    if is_browser_request:
+        return templates.TemplateResponse(
+            request,
+            "500.html",
+            {
+                "title": "500 - Sunucu Hatası",
+                "path": request.url.path,
+                "reason": "Sunucu tarafında beklenmeyen bir hata meydana geldi."
+            },
+            status_code=500
+        )
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status_code": 500,
+            "error": "Internal Server Error",
+            "reason": f"An unexpected server error occurred: {str(exc)}",
+            "path": request.url.path
+        }
+    )
+
+
+# ===================================================================
+# GENERIC 404 PAGE (Task #7)
+# ===================================================================
+
+@app.get("/404", response_class=HTMLResponse, include_in_schema=False)
+async def generic_404_view(request: Request):
+    """Generic 404 page rendering for browser users."""
+    path_param = request.query_params.get("path", "")
+    return templates.TemplateResponse(
+        request,
+        "404.html",
+        {
+            "title": "404 - Sayfa Bulunamadı",
+            "path": path_param,
+            "reason": "Aradığınız sayfa, URL veya kaynak sistemde mevcut değil."
+        },
+        status_code=404
+    )
+
+
+@app.get("/api/test-500", summary="Test 500 Internal Error (5xx Guardian)", include_in_schema=False)
+async def test_trigger_500():
+    """Trigger intentional 500 error for testing 5xx Guardian and logs/error.logs."""
+    raise RuntimeError("Intentional test server error for 5xx Guardian validation")
 
 # Path to static frontend files
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")

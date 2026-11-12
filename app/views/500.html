@@ -1,0 +1,26 @@
+{# ===================================================================
+   GENERIC 500 ERROR PAGE - views/500.html
+   Rendered when an unexpected server error occurs.
+   =================================================================== #}
+{% extends "layout.html" %}
+{% block content %}
+
+<section class="card" id="serverErrorCard" style="text-align: center; padding: 2.5rem 1.5rem;">
+  <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">⚠️ 500</div>
+  <h2 style="color: #ef4444; margin-top: 0;">Sunucu Hatası (Internal Server Error)</h2>
+  <p style="color: #94a3b8; max-width: 600px; margin: 0.75rem auto 1.5rem auto; font-size: 1.05rem;">
+    {{ reason | default("Sunucu tarafında beklenmeyen bir hata meydana geldi. Hata sistem günlüklerine (error.logs) kaydedildi.") }}
+  </p>
+  {% if path %}
+  <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">
+    İşlem Konumu: <code style="background: #0f172a; padding: 0.2rem 0.5rem; border-radius: 4px;">{{ path }}</code>
+  </p>
+  {% endif %}
+  <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+    <a class="btn btn-primary" href="/">Ana Sayfa</a>
+    <a class="btn btn-light" href="/users">Mezunlar Sayfası</a>
+  </div>
+</section>
+
+{% endblock %}
+

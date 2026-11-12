@@ -16,6 +16,7 @@ Proje, ders müfredatındaki 6 haftalık kazanımları açık ve modüler biçim
 | **Week 4** | MVC Mimarisi, Çift Kontrolcü & View Katmanı | [`app/controllers/`](app/controllers/), [`app/views/`](app/views/) | DB bağlantısız **UserModel** CRUD metotları, **UserController** (`/users`), **ApiUserController** (`/api/users`), View katmanı: `GET /users` (listeleme) ve `POST /users` (oluşturma) HTML sayfası |
 | **Week 5** | Veritabanı Göçü (Migration) & Kalıcı Depolama | [`app/database.py`](app/database.py), [`alembic/`](alembic/) | SQLite veritabanı, SQLAlchemy ORM modeli (`UserRecord`), Alembic migrasyonları (`upgrade head`) ile şema versiyonlama ve persistent veri saklama |
 | **Week 6** | İlişkisel Veri & İleri Düzey Yönlendirme (Relational Data & Advanced Routing) | [`ddd.md`](ddd.md), [`alembic/`](alembic/), [`app/database.py`](app/database.py), [`app/models.py`](app/models.py), [`app/controllers/`](app/controllers/) | - **İlişkisel Veri:** `job_postings` (1:N One-to-Many / hasMany / belongsTo) ve `applications` (N:M Many-to-Many Join Table, `UNIQUE(user_id, job_posting_id)` ile mükerrerlikte `409 Conflict`).<br>- **Yeni Migrasyon:** *"A new file — never edit the old one"* kuralıyla yeni Alembic migrasyon revizyonu.<br>- **Silme Kuralı:** `RESTRICT` stratejisi (Aktif iş ilanı olan mezunun silinmesi engellenir; `409 Conflict`).<br>- **Nested Routes:** `POST /api/users/:id/jobs` (İlan sahibini URL yolu söyler, body asla `user_id` taşımaz; 404/201), `GET /api/users/:id/jobs`.<br>- **Include (Join):** `GET /api/users/:id?include=jobs` (`LEFT JOIN` ile tek yanıtta iki tablo).<br>- **İki Liste Prensibi:** `GET /api/jobs/:id/applications` (başvuru kayıtları) vs `GET /api/jobs/:id/applicants` (başvuran mezun profilleri).<br>- **Tohumlama:** `JobPostingFactory` ve `ApplicationFactory` ile ilişkisel verilerin sıralı tohumlanması (`seed.py`).<br>- **🏠 Homework (Ödev):** *UI for Job Postings & Applications:* İş ilanlarını listeleme, ilan oluşturma modalı, ilana tek tıkla başvuru yapma (`409 Conflict` mükerrerlik uyarısı ile) ve başvuranları inceleme işlevlerini sunan interaktif kullanıcı arayüzü portalı (`/static/index.html`). |
+| **Middlewares & Guardians** | Logger, 404 Guardian, 5xx Guardian, Error Logs & Validation Rules | [`app/middleware.py`](app/middleware.py), [`app/logger.py`](app/logger.py), [`app/views/404.html`](app/views/404.html), [`logs/error.logs`](logs/error.logs) | - **Logger Middleware:** Terminalde `time method route res type duration` (ör. `10:20:30 POST /users 201 18ms`) formatında canlı istek loglama.<br>- **JobPosting Doğrulama:** `title required` (max 120 chars), `company required`, `city` & `description` opsiyonel.<br>- **404 Guardian:** 404 hatalarını gerekçeli (`reason`) döndürme ve geçersiz web isteklerini generic `/404` sayfasına yönlendirme (`RedirectResponse 303`).<br>- **5xx Guardian & Dosya Günlüğü:** 500 hatalarını yakalama, sistem çökmesini önleme ve stack trace'i `logs/error.logs` dosyasına yazma.<br>- **Postman Testleri:** Eksik gövde, geçersiz veri ve sınır aşımı test senaryoları. |
 
 
 ---
@@ -173,6 +174,81 @@ Detaylı şemalar, model alanları ve doğrulama kuralları için lütfen **[ddd
 
 ---
 
+## 🛡️ Middlewares, Guardians & Hata Yönetim Mimarisi
+
+Ders tahtasında belirtilen yönergelere tam uyumlu olarak sisteme middleware ve hata yakalama koruyucuları (guardians) dahil edilmiştir:
+
+```
+[İstemci İstekleri]
+        │
+        ▼
+[Logger Middleware] ──────────► Terminal: "10:20:30 POST /users 201 18ms"
+        │
+        ▼
+[404 Guardian] ───────────────► API: 404 Reason JSON | Web: 303 Redirect /404
+        │
+        ▼
+[Method Override] ────────────► Form PUT / PATCH / DELETE desteği
+        │
+        ▼
+[Controller / Routes] ────────► Validasyon Kontrolleri (400 Bad Request)
+        │
+        ▼
+[5xx Guardian] ───────────────► logs/error.logs + Standart 500 JSON / 500 HTML
+```
+
+### 1. Postman ile Geçersiz İstekleri Deneme (Invalid Requests)
+İsteklerin doğrulanması için Pydantic ve özel doğrulama yakalayıcı devrededir:
+- **Eksik Alan Gönderimi:**
+  ```json
+  POST /api/users/1/jobs
+  { "company": "Acme" }
+  ```
+  Yanıt: `400 Bad Request` ➔ `{"status_code": 400, "error": "Bad Request", "reason": "title: Field required"}`
+- **Karakter Sınır Aşımı (Title > 120 Karakter):**
+  ```json
+  POST /api/users/1/jobs
+  { "title": "Çok uzun başlık...", "company": "Acme" }
+  ```
+  Yanıt: `400 Bad Request` ➔ `{"status_code": 400, "error": "Bad Request", "reason": "title: String should have at most 120 characters"}`
+
+### 2. JobPosting Kuralları (Model & DDD)
+- `title required`: Başlık zorunludur.
+- `max 120 characters`: Başlık en fazla 120 karakter olabilir.
+- `company required`: Şirket alanı zorunludur.
+- `city, description are optional`: Şehir ve açıklama alanları isteğe bağlıdır (opsiyonel).
+
+### 3. Logger Middleware (Terminal Günlüğü)
+Tüm istekleri yakalayıp terminal ekranına belirtilen formatta canlı log basar:
+`time method route res type duration`
+```text
+10:20:30 POST /users 201 18ms
+10:20:35 GET /api/jobs 200 6ms
+10:20:40 GET /api/non-existent 404 2ms
+```
+
+### 4. 404 Guardian Middleware
+- 404 Not Found durumlarında istemciye mutlaka açıklayıcı bir gerekçe (`reason`) döner.
+```json
+{
+  "status_code": 404,
+  "error": "Not Found",
+  "reason": "The requested resource or endpoint '/api/xyz' was not found.",
+  "path": "/api/xyz"
+}
+```
+
+### 5. 5xx Guardian
+- Sunucu kaynaklı öngörülemeyen hatalarda (500 Internal Server Error) sunucunun çökmesini engeller, kullanıcıya güvenli ve standart bir hata yanıtı döner.
+
+### 6. Dosya Hata Günlüğü (`logs/error.logs`)
+- 5xx hataları ve yakalanan istisnalar; zaman damgası, HTTP metodu, rota ve tam Python stack trace'i ile birlikte otomatik olarak `logs/error.logs` dosyasına kaydedilir.
+
+### 7. Generic 404 Sayfası ve Yönlendirme (Web Redirect)
+- Web tarayıcılarından gelen geçersiz sayfa istekleri otomatik olarak `303 See Other` koduyla generic `/404` rotasına yönlendirilir ve kullanıcıya modern bir 404 HTML sayfası (`app/views/404.html`) sunulur.
+
+---
+
 ## 🚀 Çalıştırma Talimatları
 
 ### 1. Docker ile Çalıştırma:
@@ -182,6 +258,7 @@ docker compose up --build
 - 📚 **Swagger UI Dokümanları:** [http://localhost:3000/docs](http://localhost:3000/docs)
 - 🌐 **Web Arayüzü:** [http://localhost:3000](http://localhost:3000)
 - 📝 **Week 4 View (Listeleme + Ekleme):** [http://localhost:3000/users](http://localhost:3000/users)
+- 🔍 **Generic 404 Sayfası:** [http://localhost:3000/404](http://localhost:3000/404)
 
 ### 2. Yerel Python ile Çalıştırma:
 ```bash
@@ -189,9 +266,13 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### 3. Test Paketini Çalıştırma:
+### 3. Test Paketlerini Çalıştırma:
 ```bash
+# 1. Temel API, MVC ve İlişkisel Rota Testleri:
 python test_api.py
+
+# 2. Middleware, Guardian, 404/5xx ve Loglama Testleri:
+python test_middlewares.py
 ```
 
 ### 4. Veritabanı Migrasyonları (Alembic):
@@ -220,31 +301,42 @@ python seed.py --reset --count 50
 alumni/
 ├── alembic/                             # Alembic şema migrasyon dizini
 │   ├── versions/                        # Versiyonlanmış göç dosyaları (DDL scriptleri)
+│   │   ├── 4b4900ce1c26_create_users_table.py
+│   │   ├── 8f1c4e2a3b5d_create_job_postings_and_applications_tables.py
+│   │   └── c3d8f7a1b2c4_add_city_and_description_to_job_postings.py
 │   └── env.py                           # Alembic çalışma ortamı ve model bağlayıcı
 ├── alembic.ini                          # Alembic ana yapılandırma dosyası
 ├── app/
 │   ├── __init__.py
-│   ├── database.py                      # SQLAlchemy motoru, SessionLocal & UserRecord ORM modeli
-│   ├── factory.py                       # UserFactory: Gerçekçi mezun veri üretim fabrikası (Factory Pattern)
-│   ├── main.py                          # Ana uygulama, Week 1 rotaları & Controller kayıtları
-│   ├── models.py                        # Model: UserModel (DB destekli CRUD) & Pydantic şemaları
+│   ├── database.py                      # SQLAlchemy motoru, SessionLocal, UserRecord & JobPostingRecord
+│   ├── factory.py                       # UserFactory & JobPostingFactory (Factory Pattern)
+│   ├── logger.py                        # Terminal biçimlendirici ve logs/error.logs dosya yazıcısı
+│   ├── middleware.py                    # LoggerMiddleware & Guardian404Middleware
+│   ├── main.py                          # Ana uygulama, Middlewares, Guardians & rotalar
+│   ├── models.py                        # Model: UserModel, JobPostingModel & Pydantic şemaları
 │   ├── controllers/
 │   │   ├── __init__.py
-│   │   ├── api_user_controller.py      # Controller 1: /api/users uç noktaları
-│   │   └── user_controller.py          # Controller 2: /users uç noktaları
+│   │   ├── api_application_controller.py # /api/applications uç noktaları
+│   │   ├── api_job_controller.py         # /api/jobs uç noktaları
+│   │   ├── api_user_controller.py        # /api/users uç noktaları
+│   │   └── user_controller.py            # /users (HTML View) uç noktaları
 │   ├── views/
-│   │   └── users/
-│   │       └── index.html              # View (Week 4): GET /users listeleme + POST /users formu
+│   │   ├── 404.html                     # Generic 404 HTML sayfası
+│   │   ├── 500.html                     # Generic 500 HTML sayfası
+│   │   ├── layout.html                  # Ortak Jinja2 ana şablonu
+│   │   └── users/                       # Kullanıcı CRUD HTML şablonları
 │   └── static/                          # Statik HTML/CSS/JS dosyaları
+├── logs/
+│   └── error.logs                       # 5xx ve sistem hata günlükleri
 ├── Dockerfile                           # Docker yapılandırma dosyası
 ├── docker-compose.yml                   # Docker Compose servis tanımı
-├── requirements.txt                     # Python bağımlılıkları (FastAPI, SQLAlchemy, Alembic vb.)
-├── .env.example                         # Örnek çevre değişkenleri şablonu (şablon)
-├── .env                                 # Gerçek çevre değişkenleri (lokal/gizli, gitignore'da)
+├── requirements.txt                     # Python bağımlılıkları (FastAPI, SQLAlchemy, Alembic, httpx vb.)
+├── .env.example                         # Örnek çevre değişkenleri şablonu
 ├── main.py                              # Yerel çalıştırma giriş noktası
-├── seed.py                              # 50 mezun tohumlama CLI betiği (Database Seeder)
-├── test_api.py                          # UserModel & her iki Controller'ı test eden test paketi
-├── ddd.md                               # Data Design Documentation (Veri modelleri, şemalar & migrasyon)
+├── seed.py                              # Veritabanı tohumlama CLI betiği
+├── test_api.py                          # UserModel & Controller test paketi
+├── test_middlewares.py                  # Logger, Guardian, 404 & 5xx test paketi
+├── ddd.md                               # Data Design Documentation
 └── README.md                            # Proje dokümantasyonu
 ```
 

@@ -119,13 +119,25 @@ class JobPostingFactory:
         "Amazon Web Services"
     ]
 
+    CITIES = ["Istanbul", "Ankara", "Izmir", "Bursa", "Antalya", "Remote", None]
+
+    DESCRIPTIONS = [
+        "Fast-paced startup environment working on scalable microservices.",
+        "Developing modern web applications and REST APIs.",
+        "Data pipeline modeling, analysis and predictive metrics.",
+        "Automated integration testing and quality assurance.",
+        None
+    ]
+
     @classmethod
     def create_fake_job(cls, user_id: int, job_id: Optional[int] = None) -> dict:
         """Generates a single fake job posting."""
         data = {
             "user_id": user_id,
             "title": random.choice(cls.JOB_TITLES),
-            "company": random.choice(cls.COMPANIES)
+            "company": random.choice(cls.COMPANIES),
+            "city": random.choice(cls.CITIES),
+            "description": random.choice(cls.DESCRIPTIONS)
         }
         if job_id is not None:
             data["id"] = job_id

@@ -54,8 +54,10 @@ class JobPostingRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True)
-    title = Column(String(150), nullable=False)
+    title = Column(String(120), nullable=False)
     company = Column(String(100), nullable=False)
+    city = Column(String(100), nullable=True)
+    description = Column(String(500), nullable=True)
 
     # Relationships
     owner = relationship("UserRecord", back_populates="jobs")
@@ -67,7 +69,9 @@ class JobPostingRecord(Base):
             "id": self.id,
             "user_id": self.user_id,
             "title": self.title,
-            "company": self.company
+            "company": self.company,
+            "city": self.city,
+            "description": self.description
         }
 
 
@@ -124,10 +128,10 @@ def seed_database():
             db.commit()
 
             seed_jobs = [
-                JobPostingRecord(id=10, user_id=1, title="Backend Intern", company="Acme"),
-                JobPostingRecord(id=11, user_id=1, title="Data Analyst", company="Acme"),
-                JobPostingRecord(id=12, user_id=2, title="QA Tester", company="TechCorp"),
-                JobPostingRecord(id=13, user_id=1, title="Junior Developer", company="Acme"),
+                JobPostingRecord(id=10, user_id=1, title="Backend Intern", company="Acme", city="Istanbul", description="Backend developer intern"),
+                JobPostingRecord(id=11, user_id=1, title="Data Analyst", company="Acme", city="Ankara", description="Data analysis and reporting"),
+                JobPostingRecord(id=12, user_id=2, title="QA Tester", company="TechCorp", city="Izmir", description="Manual and automated testing"),
+                JobPostingRecord(id=13, user_id=1, title="Junior Developer", company="Acme", city=None, description=None),
             ]
             db.add_all(seed_jobs)
             db.commit()

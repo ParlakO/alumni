@@ -9,4 +9,6 @@ env/
 .vscode/
 *.db
 *.sqlite
+logs/*.logs
+!logs/.gitkeep
 
