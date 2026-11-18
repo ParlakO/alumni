@@ -63,7 +63,45 @@
 
   <!-- Main Content Layout -->
   <main class="main-wrapper">
-    <!-- Hero / Stats Bar -->
+    <!-- Hero Showcase Section -->
+    <section class="hero-section">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="badge-icon">🏛️</span>
+          <span>İstanbul Üniversitesi &bull; YBSB3001</span>
+          <span class="badge-tag">v1.0.0</span>
+        </div>
+        <h1 class="hero-title">Mezun Bilgi &amp; <span class="gradient-text">Kariyer Ekosistemi</span></h1>
+        <p class="hero-description">
+          İstanbul Üniversitesi mezunlarını, kariyer fırsatlarını ve iş başvurularını birbirine bağlayan; 
+          ilişkisel veri mimarisi (1:N &amp; N:M), Alembic şema versiyonlama ve RESTful MVC ile donatılmış yeni nesil takip portalı.
+        </p>
+        <div class="hero-meta-pills">
+          <span class="meta-pill"><span class="pill-dot green"></span> RESTful MVC Architecture</span>
+          <span class="meta-pill"><span class="pill-dot blue"></span> SQLite + SQLAlchemy ORM</span>
+          <span class="meta-pill"><span class="pill-dot purple"></span> Alembic Migrations</span>
+          <span class="meta-pill"><span class="pill-dot amber"></span> RESTRICT Integrity</span>
+        </div>
+      </div>
+      <div class="hero-quick-actions">
+        <a href="/docs" target="_blank" class="hero-action-card">
+          <div class="action-icon">⚡</div>
+          <div class="action-info">
+            <strong>API Dokümantasyonu</strong>
+            <span>İnteraktif Swagger UI (/docs)</span>
+          </div>
+        </a>
+        <a href="/users" class="hero-action-card">
+          <div class="action-icon">🌐</div>
+          <div class="action-info">
+            <strong>MVC View Arayüzü</strong>
+            <span>Jinja2 Tabanlı Sayfa (/users)</span>
+          </div>
+        </a>
+      </div>
+    </section>
+
+    <!-- Stats Bar -->
     <section class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon-wrapper icon-blue">
