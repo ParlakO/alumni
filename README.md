@@ -4,10 +4,10 @@ Bu proje, **İstanbul Üniversitesi Web Programlama (YBSB3001)** dersi kapsamın
 
 ---
 
-> 📚 **Kurumsal Standartlar & Dokümantasyon:**
-> - 🎨 **[Marka Kimliği Kılavuzu (brand.md)](#brand-md):** Kurumsal değerler, logo, tipografi ve tonlama rehberi ([`brand.md`](brand.md)).
-> - 📐 **[Tasarım Sistemi Spesifikasyonu (DESIGN.MD)](#design-md):** `styles.refero.design` ve `VoltAgent/awesome-design-md` uyumlu UI/UX spesifikasyonu ([`DESIGN.MD`](DESIGN.MD)).
-> - 📊 **[Veri Tasarımı Dokümantasyonu (ddd.md)](ddd.md):** 1:N ve N:M ilişkisel şemalar, DTO'lar ve RESTRICT politikaları.
+> 📚 **Corporate Standards & Documentation:**
+> - 🎨 **[Brand Identity Guidelines (brand.md)](#brand-md):** Corporate values, logo, typography & tone of voice ([`brand.md`](brand.md)).
+> - 📐 **[Design System Specification (DESIGN.MD)](#design-md):** UI/UX design tokens & components compliant with `styles.refero.design` & `VoltAgent/awesome-design-md` ([`DESIGN.MD`](DESIGN.MD)).
+> - 📊 **[Data Design Documentation (ddd.md)](ddd.md):** 1:N & N:M relational schemas, DTOs & RESTRICT policies.
 
 ---
 
@@ -15,15 +15,16 @@ Bu proje, **İstanbul Üniversitesi Web Programlama (YBSB3001)** dersi kapsamın
 
 Proje, ders müfredatındaki 6 haftalık kazanımları açık ve modüler biçimde yansıtır:
 
-| Hafta | Konu | İlgili Dosyalar & Fonksiyonlar | Açıklama |
+| Week | Topic | Relevant Files & Functions | Description |
 |:---|:---|:---|:---|
-| **Week 1** | Temel Yönlendirme (Routing) & Karşılama | [`app/main.py`](app/main.py) | `GET /`, `GET /hello`, `GET /hello/:name`, `GET /sum/:a/:b`, `GET /about`, `GET /api/health` |
-| **Week 2** | Bellek İçi Veri Yapısı & Okuma İşlemleri | [`app/models.py`](app/models.py) | In-Memory veri listesi, `GET /api/users` (listeleme) ve `GET /api/users/:id` |
-| **Week 3** | Tam CRUD Operasyonları & Validasyon | [`app/models.py`](app/models.py) | POST (oluşturma), PUT (tam güncelleme), PATCH (kısmi güncelleme), DELETE (silme), Pydantic validasyonu ve HTTP durum kodları (`201`, `204`, `400`, `404`) |
-| **Week 4** | MVC Mimarisi, Çift Kontrolcü & View Katmanı | [`app/controllers/`](app/controllers/), [`app/views/`](app/views/) | DB bağlantısız **UserModel** CRUD metotları, **UserController** (`/users`), **ApiUserController** (`/api/users`), View katmanı: `GET /users` (listeleme) ve `POST /users` (oluşturma) HTML sayfası |
-| **Week 5** | Veritabanı Göçü (Migration) & Kalıcı Depolama | [`app/database.py`](app/database.py), [`alembic/`](alembic/) | SQLite veritabanı, SQLAlchemy ORM modeli (`UserRecord`), Alembic migrasyonları (`upgrade head`) ile şema versiyonlama ve persistent veri saklama |
-| **Week 6** | İlişkisel Veri & İleri Düzey Yönlendirme (Relational Data & Advanced Routing) | [`ddd.md`](ddd.md), [`alembic/`](alembic/), [`app/database.py`](app/database.py), [`app/models.py`](app/models.py), [`app/controllers/`](app/controllers/) | - **İlişkisel Veri:** `job_postings` (1:N One-to-Many / hasMany / belongsTo) ve `applications` (N:M Many-to-Many Join Table, `UNIQUE(user_id, job_posting_id)` ile mükerrerlikte `409 Conflict`).<br>- **Yeni Migrasyon:** *"A new file — never edit the old one"* kuralıyla yeni Alembic migrasyon revizyonu.<br>- **Silme Kuralı:** `RESTRICT` stratejisi (Aktif iş ilanı olan mezunun silinmesi engellenir; `409 Conflict`).<br>- **Nested Routes:** `POST /api/users/:id/jobs` (İlan sahibini URL yolu söyler, body asla `user_id` taşımaz; 404/201), `GET /api/users/:id/jobs`.<br>- **Include (Join):** `GET /api/users/:id?include=jobs` (`LEFT JOIN` ile tek yanıtta iki tablo).<br>- **İki Liste Prensibi:** `GET /api/jobs/:id/applications` (başvuru kayıtları) vs `GET /api/jobs/:id/applicants` (başvuran mezun profilleri).<br>- **Tohumlama:** `JobPostingFactory` ve `ApplicationFactory` ile ilişkisel verilerin sıralı tohumlanması (`seed.py`).<br>- **🏠 Homework (Ödev):** *UI for Job Postings & Applications:* İş ilanlarını listeleme, ilan oluşturma modalı, ilana tek tıkla başvuru yapma (`409 Conflict` mükerrerlik uyarısı ile) ve başvuranları inceleme işlevlerini sunan interaktif kullanıcı arayüzü portalı (`/static/index.html`). |
-| **Middlewares & Guardians** | Logger, 404 Guardian, 5xx Guardian, Error Logs & Validation Rules | [`app/middleware.py`](app/middleware.py), [`app/logger.py`](app/logger.py), [`app/views/404.html`](app/views/404.html), [`logs/error.logs`](logs/error.logs) | - **Logger Middleware:** Terminalde `time method route res type duration` (ör. `10:20:30 POST /users 201 18ms`) formatında canlı istek loglama.<br>- **JobPosting Doğrulama:** `title required` (max 120 chars), `company required`, `city` & `description` opsiyonel.<br>- **404 Guardian:** 404 hatalarını gerekçeli (`reason`) döndürme ve geçersiz web isteklerini generic `/404` sayfasına yönlendirme (`RedirectResponse 303`).<br>- **5xx Guardian & Dosya Günlüğü:** 500 hatalarını yakalama, sistem çökmesini önleme ve stack trace'i `logs/error.logs` dosyasına yazma.<br>- **Postman Testleri:** Eksik gövde, geçersiz veri ve sınır aşımı test senaryoları. |
+| **Week 1** | Basic Routing & Greetings | [`app/main.py`](app/main.py) | `GET /`, `GET /hello`, `GET /hello/:name`, `GET /sum/:a/:b`, `GET /about`, `GET /api/health` |
+| **Week 2** | In-Memory Data Structures & Read Operations | [`app/models.py`](app/models.py) | In-Memory data list, `GET /api/users` (listing) and `GET /api/users/:id` |
+| **Week 3** | Full CRUD Operations & Validation | [`app/models.py`](app/models.py) | POST (creation), PUT (full update), PATCH (partial update), DELETE, Pydantic validation & HTTP status codes (`201`, `204`, `400`, `404`) |
+| **Week 4** | MVC Architecture, Dual Controllers & View Layer | [`app/controllers/`](app/controllers/), [`app/views/`](app/views/) | Standalone **UserModel** CRUD methods, **UserController** (`/users`), **ApiUserController** (`/api/users`), View layer: `GET /users` (listing) & `POST /users` (creation) HTML pages |
+| **Week 5** | Database Migration & Persistent Storage | [`app/database.py`](app/database.py), [`alembic/`](alembic/) | SQLite database, SQLAlchemy ORM model (`UserRecord`), Alembic migrations (`upgrade head`) with schema versioning |
+| **Week 6** | Relational Data & Advanced Routing | [`ddd.md`](ddd.md), [`alembic/`](alembic/), [`app/database.py`](app/database.py), [`app/models.py`](app/models.py), [`app/controllers/`](app/controllers/) | - **Relational Data:** `job_postings` (1:N One-to-Many / hasMany / belongsTo) and `applications` (N:M Many-to-Many Join Table, `UNIQUE(user_id, job_posting_id)` with `409 Conflict`).<br>- **New Migration:** *"A new file — never edit the old one"* rule.<br>- **Deletion Rule:** `RESTRICT` strategy (Active job posting prevents deleting user; `409 Conflict`).<br>- **Nested Routes:** `POST /api/users/:id/jobs` (owner from URL path, 404/201), `GET /api/users/:id/jobs`.<br>- **Include (Join):** `GET /api/users/:id?include=jobs` (`LEFT JOIN`).<br>- **Two Lists Principle:** `GET /api/jobs/:id/applications` vs `GET /api/jobs/:id/applicants`.<br>- **Seeding:** `JobPostingFactory` and `ApplicationFactory` (`seed.py`).<br>- **🏠 Homework:** *UI for Job Postings & Applications:* Interactive portal (`/static/index.html`). |
+| **Middlewares & Guardians** | Logger, 404 Guardian, 5xx Guardian & Validation Rules | [`app/middleware.py`](app/middleware.py), [`app/logger.py`](app/logger.py), [`app/views/404.html`](app/views/404.html), [`logs/error.logs`](logs/error.logs) | - **Logger Middleware:** Live request logging in `time method route res type duration` format.<br>- **Validation Rules:** `title required` (max 120 chars), `company required`, optional `city` & `description`.<br>- **404 Guardian:** Reasoned 404 error responses & generic browser redirect (`/404`).<br>- **5xx Guardian:** System crash prevention & stack trace logging to `logs/error.logs`. |
+| **Design & Brand** | Brand Guidelines & Design System Specification | [`brand.md`](brand.md), [`DESIGN.MD`](DESIGN.MD) | - **Brand Identity:** Mission, core values, typography, and tone of voice ([`brand.md`](brand.md)).<br>- **Design System:** Design tokens, glassmorphism, responsive grid & components compliant with `styles.refero.design` & `VoltAgent/awesome-design-md` ([`DESIGN.MD`](DESIGN.MD)). |
 
 
 ---
@@ -45,22 +46,22 @@ Proje, ders müfredatındaki 6 haftalık kazanımları açık ve modüler biçim
 
 ---
 
-## <a id="brand-md"></a>🎨 Marka Kimliği Kılavuzu (brand.md)
+## <a id="brand-md"></a>🎨 Brand Identity Guidelines (brand.md)
 
-Projenin kurumsal kimliği, iletişim tonu ve tasarım yönergeleri [`brand.md`](brand.md) dosyasında belgelenmiştir:
-- **Marka Adı:** AlumniTrack (İstanbul Üniversitesi Mezun Takip Sistemi)
-- **Misyon & Değerler:** Akademi ile sanayi arasında güvenilir, şeffaf ve ilişkisel mezun bilgi ekosistemi.
-- **Tipografi & Renk:** Plus Jakarta Sans & JetBrains Mono, koyu tema uyumlu derin indigo (`#4f46e5`) ve zümrüt yeşili (`#10b981`) paleti.
-- 🔗 **Detaylı İncele:** [`brand.md`](brand.md)
+Corporate identity, brand voice, typography, and visual standards are documented in [`brand.md`](brand.md):
+- **Brand Name:** AlumniTrack (Istanbul University Alumni Tracking System)
+- **Mission & Values:** Transparent, relational, and modern bridge between academia and industry.
+- **Typography & Colors:** Plus Jakarta Sans & JetBrains Mono, deep royal indigo (`#4f46e5`) and emerald growth (`#10b981`) palette.
+- 🔗 **Full Guide:** [`brand.md`](brand.md)
 
 ---
 
-## <a id="design-md"></a>📐 Tasarım Sistemi Spesifikasyonu (DESIGN.MD)
+## <a id="design-md"></a>📐 Design System Specification (DESIGN.MD)
 
-Tasarım dili, [`styles.refero.design`](https://refero.design) ve [`VoltAgent/awesome-design-md`](https://github.com/VoltAgent/awesome-design-md) standartlarına uygun olarak [`DESIGN.MD`](DESIGN.MD) dosyasında eksiksiz yapılandırılmıştır:
-- **Tasarım Felsefesi:** Modern cam morfolojisi (glassmorphism), katmanlı derinlik, yoğun fakat nefes alan bilgi mimarisi ve geliştirici odaklı açıklık.
-- **Bileşenler:** Sabit gezinme çubuğu, vitrin hero bölümü, 4 sütunlu canlı istatistik gridi, çoklu sekme yöneticisi (Mezunlar / İlanlar / Başvurular), interaktif modal pencereleri ve toast bildirim sistemi.
-- 🔗 **Detaylı İncele:** [`DESIGN.MD`](DESIGN.MD)
+Design language is fully structured in [`DESIGN.MD`](DESIGN.MD) adhering to [`styles.refero.design`](https://refero.design) and [`VoltAgent/awesome-design-md`](https://github.com/VoltAgent/awesome-design-md):
+- **Design Philosophy:** Layered depth, sleek dark glassmorphism, developer-first technical clarity, and high information density.
+- **Components:** Sticky navigation bar, hero showcase, 4-column live statistics grid, multi-entity tabs (Alumni / Jobs / Applications), interactive modals, and toast notification system.
+- 🔗 **Full Specification:** [`DESIGN.MD`](DESIGN.MD)
 
 ---
 
