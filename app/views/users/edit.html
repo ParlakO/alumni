@@ -1,5 +1,5 @@
 {# ===================================================================
-   WEEK 4: VIEW - users/edit.html
+   WEEK 4: VIEW - users/edit.html (AlumniTrack Design System)
      GET /users/{id}/edit -> edit form
      Two submit buttons:
        PUT   (POST ?_method=PUT)   -> replace, all fields required
@@ -8,28 +8,61 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<section class="card">
-  <h2>Mezun Düzenle <code>#{{ user_id }}</code></h2>
-  <p class="subtitle">
-    <strong>PUT</strong>: tüm alanlar zorunlu (tam değiştirme) ·
-    <strong>PATCH</strong>: sadece doldurulan alanlar güncellenir
-  </p>
+<section class="card" style="max-width: 800px; margin: 0 auto 1.5rem auto;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.5rem;">
+    <h2 style="margin: 0;">
+      <span>✏️</span> Mezun Bilgilerini Düzenle 
+      <code>#{{ user_id }}</code>
+    </h2>
+    <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">
+      PUT / PATCH İşlemi
+    </span>
+  </div>
+
+  <!-- Method Guidance Box -->
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); margin: 1rem 0 1.5rem 0;">
+    <div style="display: flex; gap: 0.6rem; align-items: flex-start;">
+      <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4);">PUT</span>
+      <span style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.4;">
+        <strong>Tam Güncelleme:</strong> Tüm alanlar zorunludur. Mevcut verinin üzerine tamamen yazar.
+      </span>
+    </div>
+    <div style="display: flex; gap: 0.6rem; align-items: flex-start;">
+      <span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #c084fc; border-color: rgba(139, 92, 246, 0.4);">PATCH</span>
+      <span style="font-size: 0.82rem; color: #cbd5e1; line-height: 1.4;">
+        <strong>Kısmi Güncelleme:</strong> Sadece değiştirmek istediğiniz alanları doldurun, boş bırakılanlar korunur.
+      </span>
+    </div>
+  </div>
+
   <form method="post" action="/users/{{ user_id }}?_method=PUT" class="grid" id="editUserForm">
-    <label>Ad Soyad
-      <input type="text" name="name" id="editNameInput" value="{{ form.name or '' }}">
+    <label>
+      Ad Soyad
+      <input type="text" name="name" id="editNameInput" placeholder="Örn: Ada Lovelace" value="{{ form.name or '' }}">
     </label>
-    <label>E-posta
-      <input type="email" name="email" id="editEmailInput" value="{{ form.email or '' }}">
+    <label>
+      Kurumsal E-posta
+      <input type="email" name="email" id="editEmailInput" placeholder="Örn: ada@istanbul.edu.tr" value="{{ form.email or '' }}">
     </label>
-    <label class="full">Bölüm
-      <input type="text" name="department" id="editDepartmentInput" value="{{ form.department or '' }}">
+    <label class="full">
+      Bölüm
+      <input type="text" name="department" id="editDepartmentInput" placeholder="Örn: Bilgisayar Mühendisliği" value="{{ form.department or '' }}">
     </label>
-    <div class="actions full">
-      <button type="submit" class="btn btn-warning" id="putUserBtn"
-              formaction="/users/{{ user_id }}?_method=PUT">Kaydet (PUT)</button>
-      <button type="submit" class="btn btn-patch" id="patchUserBtn"
-              formaction="/users/{{ user_id }}?_method=PATCH">Kısmi Kaydet (PATCH)</button>
-      <a class="btn btn-light" href="/users/{{ user_id }}">İptal</a>
+    
+    <div class="actions full" style="margin-top: 1rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle); justify-content: space-between;">
+      <div style="display: flex; gap: 0.65rem; flex-wrap: wrap;">
+        <button type="submit" class="btn btn-warning" id="putUserBtn"
+                formaction="/users/{{ user_id }}?_method=PUT">
+          💾 Tam Kaydet (PUT)
+        </button>
+        <button type="submit" class="btn btn-patch" id="patchUserBtn"
+                formaction="/users/{{ user_id }}?_method=PATCH">
+          ⚡ Kısmi Kaydet (PATCH)
+        </button>
+      </div>
+      <a class="btn btn-light" href="/users/{{ user_id }}">
+        İptal
+      </a>
     </div>
   </form>
 </section>

@@ -1,27 +1,47 @@
 {# ===================================================================
-   GENERIC 404 PAGE - views/404.html
+   GENERIC 404 PAGE - views/404.html (AlumniTrack Design System)
    Rendered when a requested page or URL does not exist.
    =================================================================== #}
 {% extends "layout.html" %}
 {% block content %}
 
-<section class="card" id="notFoundCard" style="text-align: center; padding: 2.5rem 1.5rem;">
-  <div style="font-size: 3.5rem; margin-bottom: 0.5rem;">🔍 404</div>
-  <h2 style="color: #f87171; margin-top: 0;">Sayfa veya Kaynak Bulunamadı</h2>
-  <p style="color: #94a3b8; max-width: 600px; margin: 0.75rem auto 1.5rem auto; font-size: 1.05rem;">
+<section class="card" id="notFoundCard" style="max-width: 700px; margin: 2.5rem auto; text-align: center; padding: 3.5rem 2rem; border-color: rgba(239, 68, 68, 0.35); box-shadow: 0 16px 40px -12px rgba(239, 68, 68, 0.15);">
+  <div style="display: inline-flex; align-items: center; justify-content: center; width: 80px; height: 80px; border-radius: 50%; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); font-size: 2.4rem; margin-bottom: 1.25rem;">
+    🧭
+  </div>
+  
+  <div style="margin-bottom: 0.5rem;">
+    <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); font-size: 0.9rem; padding: 0.35rem 0.85rem;">
+      HTTP 404 · Guardian Koruması
+    </span>
+  </div>
+
+  <h2 style="color: #f87171; justify-content: center; font-size: 1.75rem; margin: 0.75rem 0 0.5rem 0;">
+    Sayfa veya Kaynak Bulunamadı
+  </h2>
+
+  <p style="color: #cbd5e1; max-width: 580px; margin: 0.75rem auto 1.5rem auto; font-size: 1rem; line-height: 1.6;">
     {{ reason | default("Aradığınız sayfa, URL veya kaynak sistemde mevcut değil ya da taşınmış olabilir.") }}
   </p>
+
   {% if path %}
-  <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">
-    İstenen Konum: <code style="background: #0f172a; padding: 0.2rem 0.5rem; border-radius: 4px;">{{ path }}</code>
-  </p>
+  <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 0.6rem 1rem; display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 2rem;">
+    <span style="color: var(--text-dim); font-size: 0.82rem;">İstenen Konum:</span>
+    <code style="color: #f87171;">{{ path }}</code>
+  </div>
   {% endif %}
-  <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
-    <a class="btn btn-primary" href="/">Ana Sayfa</a>
-    <a class="btn btn-light" href="/users">Mezunlar Sayfası</a>
-    <a class="btn btn-light" href="/docs">API Dokümantasyonu (Swagger)</a>
+
+  <div style="display: flex; gap: 0.85rem; justify-content: center; flex-wrap: wrap;">
+    <a class="btn btn-primary" href="/">
+      🏠 Ana Sayfa Portalı
+    </a>
+    <a class="btn btn-light" href="/users">
+      👥 Mezunlar Sayfası
+    </a>
+    <a class="btn btn-light" href="/docs" target="_blank">
+      ⚡ Swagger API Dokümantasyonu
+    </a>
   </div>
 </section>
 
 {% endblock %}
-

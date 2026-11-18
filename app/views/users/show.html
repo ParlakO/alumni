@@ -1,25 +1,79 @@
 {# ===================================================================
-   WEEK 4: VIEW - users/show.html
+   WEEK 4: VIEW - users/show.html (AlumniTrack Design System)
      GET /users/{id} -> show one user
    =================================================================== #}
 {% extends "layout.html" %}
 {% block content %}
 
-<section class="card">
-  <h2>Mezun Detayı <code>GET /users/{{ user.id }}</code></h2>
+<section class="card" style="max-width: 800px; margin: 0 auto 1.5rem auto;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+    <h2>
+      <span>👤</span> Mezun Profil Kartı
+      <code>GET /users/{{ user.id }}</code>
+    </h2>
+    <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.3);">
+      ✅ Aktif Mezun Kaydı
+    </span>
+  </div>
+
+  <!-- User Avatar Profile Summary -->
+  <div style="display: flex; align-items: center; gap: 1.25rem; padding: 1.25rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+    <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 4px 16px var(--primary-glow); flex-shrink: 0;">
+      🎓
+    </div>
+    <div>
+      <h3 style="margin: 0; font-size: 1.35rem; color: #ffffff; font-weight: 700;">{{ user.name }}</h3>
+      <div style="display: flex; gap: 0.6rem; margin-top: 0.35rem; flex-wrap: wrap;">
+        <span class="badge">#{{ user.id }}</span>
+        <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3);">
+          🏛️ {{ user.department }}
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Information List -->
   <dl id="userDetail">
-    <dt>ID</dt><dd>#{{ user.id }}</dd>
-    <dt>Ad Soyad</dt><dd>{{ user.name }}</dd>
-    <dt>E-posta</dt><dd>{{ user.email }}</dd>
-    <dt>Bölüm</dt><dd>{{ user.department }}</dd>
+    <dt>📌 Kayıt ID</dt>
+    <dd><code>#{{ user.id }}</code></dd>
+
+    <dt>👤 Ad Soyad</dt>
+    <dd><strong style="color: #ffffff;">{{ user.name }}</strong></dd>
+
+    <dt>✉️ Kurumsal E-posta</dt>
+    <dd>
+      <a href="mailto:{{ user.email }}" style="font-family: var(--font-mono); color: #93c5fd;">
+        {{ user.email }}
+      </a>
+    </dd>
+
+    <dt>🎓 Mezuniyet Bölümü</dt>
+    <dd>{{ user.department }}</dd>
+
+    <dt>🌐 REST API JSON</dt>
+    <dd>
+      <a href="/api/users/{{ user.id }}" target="_blank">
+        <code>/api/users/{{ user.id }}</code> ↗
+      </a>
+    </dd>
   </dl>
-  <div class="actions">
-    <a class="btn btn-warning" id="editUserBtn" href="/users/{{ user.id }}/edit">Düzenle</a>
-    <form method="post" action="/users/{{ user.id }}?_method=DELETE"
-          onsubmit="return confirm('#{{ user.id }} silinsin mi?');">
-      <button type="submit" class="btn btn-danger" id="deleteUserBtn">Sil</button>
-    </form>
-    <a class="btn btn-light" href="/users">Listeye Dön</a>
+
+  <!-- Action Buttons -->
+  <div class="actions" style="margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle); justify-content: space-between;">
+    <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+      <a class="btn btn-warning" id="editUserBtn" href="/users/{{ user.id }}/edit">
+        ✏️ Bilgileri Düzenle (PUT / PATCH)
+      </a>
+      <form method="post" action="/users/{{ user.id }}?_method=DELETE"
+            onsubmit="return confirm('#{{ user.id }} numaralı mezun kaydı silinsin mi?');">
+        <button type="submit" class="btn btn-danger" id="deleteUserBtn">
+          🗑️ Mezun Kaydını Sil
+        </button>
+      </form>
+    </div>
+    <a class="btn btn-light" href="/users">
+      ⬅️ Mezun Listesine Dön
+    </a>
   </div>
 </section>
 

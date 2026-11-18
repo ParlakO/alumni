@@ -5,8 +5,8 @@ Bu proje, **İstanbul Üniversitesi Web Programlama (YBSB3001)** dersi kapsamın
 ---
 
 > 📚 **Kurumsal Standartlar & Dokümantasyon:**
-> - 🎨 **[Marka Kimliği Kılavuzu (brand.md)](#-marka-kimliği-kılavuzu-brandmd):** Kurumsal değerler, logo, tipografi ve tonlama rehberi (`brand.md`).
-> - 📐 **[Tasarım Sistemi Spesifikasyonu (DESIGN.MD)](#-tasarım-sistemi-spesifikasyonu-designmd):** `styles.refero.design` ve `VoltAgent/awesome-design-md` uyumlu UI/UX spesifikasyonu (`DESIGN.MD`).
+> - 🎨 **[Marka Kimliği Kılavuzu (brand.md)](#brand-md):** Kurumsal değerler, logo, tipografi ve tonlama rehberi ([`brand.md`](brand.md)).
+> - 📐 **[Tasarım Sistemi Spesifikasyonu (DESIGN.MD)](#design-md):** `styles.refero.design` ve `VoltAgent/awesome-design-md` uyumlu UI/UX spesifikasyonu ([`DESIGN.MD`](DESIGN.MD)).
 > - 📊 **[Veri Tasarımı Dokümantasyonu (ddd.md)](ddd.md):** 1:N ve N:M ilişkisel şemalar, DTO'lar ve RESTRICT politikaları.
 
 ---
@@ -45,7 +45,7 @@ Proje, ders müfredatındaki 6 haftalık kazanımları açık ve modüler biçim
 
 ---
 
-## 🎨 Marka Kimliği Kılavuzu (brand.md)
+## <a id="brand-md"></a>🎨 Marka Kimliği Kılavuzu (brand.md)
 
 Projenin kurumsal kimliği, iletişim tonu ve tasarım yönergeleri [`brand.md`](brand.md) dosyasında belgelenmiştir:
 - **Marka Adı:** AlumniTrack (İstanbul Üniversitesi Mezun Takip Sistemi)
@@ -55,7 +55,7 @@ Projenin kurumsal kimliği, iletişim tonu ve tasarım yönergeleri [`brand.md`]
 
 ---
 
-## 📐 Tasarım Sistemi Spesifikasyonu (DESIGN.MD)
+## <a id="design-md"></a>📐 Tasarım Sistemi Spesifikasyonu (DESIGN.MD)
 
 Tasarım dili, [`styles.refero.design`](https://refero.design) ve [`VoltAgent/awesome-design-md`](https://github.com/VoltAgent/awesome-design-md) standartlarına uygun olarak [`DESIGN.MD`](DESIGN.MD) dosyasında eksiksiz yapılandırılmıştır:
 - **Tasarım Felsefesi:** Modern cam morfolojisi (glassmorphism), katmanlı derinlik, yoğun fakat nefes alan bilgi mimarisi ve geliştirici odaklı açıklık.

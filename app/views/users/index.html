@@ -1,5 +1,5 @@
 {# ===================================================================
-   WEEK 4: VIEW - users/index.html
+   WEEK 4: VIEW - users/index.html (AlumniTrack Design System)
      GET  /users  -> listing
      POST /users  -> creating (form below)
      Row actions  -> show (GET), edit (GET), delete (POST ?_method=DELETE)
@@ -7,57 +7,108 @@
 {% extends "layout.html" %}
 {% block content %}
 
-<!-- POST /users => creating -->
+<!-- Form Section: POST /users => creating -->
 <section class="card">
-  <h2>Yeni Mezun Ekle <code>POST /users</code></h2>
+  <h2>
+    <span>➕</span> Yeni Mezun Ekle 
+    <code>POST /users</code>
+  </h2>
+  <p class="subtitle" style="margin-bottom: 1.25rem;">
+    Yeni mezun profilini veritabanına kaydetmek için formu doldurun. ID belirtilmezse otomatik artırılır.
+  </p>
   <form method="post" action="/users" class="grid" id="createUserForm">
-    <label>ID (opsiyonel)
-      <input type="number" name="id" id="userIdInput" min="1" value="{{ form.id or '' }}">
+    <label>
+      Özel ID (Opsiyonel)
+      <input type="number" name="id" id="userIdInput" min="1" placeholder="Otomatik atama için boş bırakın" value="{{ form.id or '' }}">
     </label>
-    <label>Ad Soyad *
-      <input type="text" name="name" id="userNameInput" required minlength="2" value="{{ form.name or '' }}">
+    <label>
+      Ad Soyad <span style="color: #f87171;">*</span>
+      <input type="text" name="name" id="userNameInput" required minlength="2" placeholder="Örn: Ada Lovelace" value="{{ form.name or '' }}">
     </label>
-    <label>E-posta *
-      <input type="email" name="email" id="userEmailInput" required value="{{ form.email or '' }}">
+    <label>
+      Kurumsal E-posta <span style="color: #f87171;">*</span>
+      <input type="email" name="email" id="userEmailInput" required placeholder="Örn: ada@istanbul.edu.tr" value="{{ form.email or '' }}">
     </label>
-    <label>Bölüm *
-      <input type="text" name="department" id="userDepartmentInput" required minlength="2" value="{{ form.department or '' }}">
+    <label>
+      Mezun Olunan Bölüm <span style="color: #f87171;">*</span>
+      <input type="text" name="department" id="userDepartmentInput" required minlength="2" placeholder="Örn: Bilgisayar Mühendisliği" value="{{ form.department or '' }}">
     </label>
-    <button type="submit" class="btn btn-primary full" id="createUserBtn">Kaydet</button>
+    <button type="submit" class="btn btn-primary full" id="createUserBtn" style="padding: 0.75rem; font-size: 0.95rem;">
+      💾 Mezunu Kaydet (POST)
+    </button>
   </form>
 </section>
 
-<!-- GET /users => listing -->
+<!-- Table Section: GET /users => listing -->
 <section class="card">
-  <h2>Mezun Listesi <code>GET /users</code> <span class="badge">{{ users|length }} kayıt</span></h2>
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+    <h2 style="margin: 0;">
+      <span>👥</span> Mezun Listesi 
+      <code>GET /users</code>
+    </h2>
+    <span class="badge" style="font-size: 0.82rem; background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-color: rgba(59, 130, 246, 0.3);">
+      📊 Toplam: {{ users|length }} Mezun
+    </span>
+  </div>
+
   {% if users %}
-    <table id="usersTable">
-      <thead>
-        <tr><th>ID</th><th>Ad Soyad</th><th>E-posta</th><th>Bölüm</th><th>İşlemler</th></tr>
-      </thead>
-      <tbody>
-        {% for user in users %}
+    <div style="overflow-x: auto;">
+      <table id="usersTable">
+        <thead>
           <tr>
-            <td>#{{ user.id }}</td>
-            <td>{{ user.name }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.department }}</td>
-            <td>
-              <div class="actions">
-                <a class="btn btn-light" id="showUser{{ user.id }}" href="/users/{{ user.id }}">Detay</a>
-                <a class="btn btn-warning" id="editUser{{ user.id }}" href="/users/{{ user.id }}/edit">Düzenle</a>
-                <form method="post" action="/users/{{ user.id }}?_method=DELETE"
-                      onsubmit="return confirm('#{{ user.id }} silinsin mi?');">
-                  <button type="submit" class="btn btn-danger" id="deleteUser{{ user.id }}">Sil</button>
-                </form>
-              </div>
-            </td>
+            <th style="width: 80px;">ID</th>
+            <th>Ad Soyad</th>
+            <th>E-posta</th>
+            <th>Bölüm</th>
+            <th style="text-align: right; width: 230px;">İşlemler (CRUD)</th>
           </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {% for user in users %}
+            <tr>
+              <td>
+                <span class="badge" style="background: rgba(255,255,255,0.06); color: #cbd5e1; border-color: rgba(255,255,255,0.1);">
+                  #{{ user.id }}
+                </span>
+              </td>
+              <td>
+                <strong style="color: #f8fafc; font-size: 0.95rem;">{{ user.name }}</strong>
+              </td>
+              <td>
+                <span style="color: #94a3b8; font-family: var(--font-mono); font-size: 0.85rem;">{{ user.email }}</span>
+              </td>
+              <td>
+                <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc; border-color: rgba(139, 92, 246, 0.3);">
+                  🎓 {{ user.department }}
+                </span>
+              </td>
+              <td style="text-align: right;">
+                <div class="actions" style="justify-content: flex-end;">
+                  <a class="btn btn-light" id="showUser{{ user.id }}" href="/users/{{ user.id }}" title="Detayı İncele" style="padding: 0.45rem 0.75rem; font-size: 0.8rem;">
+                    🔍 Detay
+                  </a>
+                  <a class="btn btn-warning" id="editUser{{ user.id }}" href="/users/{{ user.id }}/edit" title="Düzenle" style="padding: 0.45rem 0.75rem; font-size: 0.8rem;">
+                    ✏️ Düzenle
+                  </a>
+                  <form method="post" action="/users/{{ user.id }}?_method=DELETE"
+                        onsubmit="return confirm('#{{ user.id }} numaralı mezun kaydı silinsin mi?');">
+                    <button type="submit" class="btn btn-danger" id="deleteUser{{ user.id }}" title="Sil" style="padding: 0.45rem 0.75rem; font-size: 0.8rem;">
+                      🗑️ Sil
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   {% else %}
-    <p>Henüz kayıtlı mezun yok.</p>
+    <div style="text-align: center; padding: 2.5rem 1rem; background: rgba(15, 23, 42, 0.4); border-radius: var(--radius-md); border: 1px dashed var(--border-subtle);">
+      <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎓</div>
+      <h3 style="color: #cbd5e1; margin-bottom: 0.35rem;">Henüz Kayıtlı Mezun Yok</h3>
+      <p style="color: var(--text-dim); font-size: 0.88rem;">Yukarıdaki formu kullanarak ilk mezun kaydını hemen ekleyebilirsiniz.</p>
+    </div>
   {% endif %}
 </section>
 

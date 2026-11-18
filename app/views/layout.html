@@ -1,67 +1,497 @@
 <!DOCTYPE html>
 <!-- ===================================================================
-     WEEK 4: VIEW LAYER - layout.html (shared base template)
-     All users/* pages extend this layout.
+     WEEK 4 & 5: VIEW LAYER - layout.html (AlumniTrack Design System)
+     Unified design template compliant with DESIGN.MD & brand.md.
+     All users/* pages, 404, and 500 extend this layout.
      =================================================================== -->
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ title }} | Alumni Tracking System</title>
-  <meta name="description" content="Alumni Tracking System - Week 4 MVC view layer (UserController CRUD).">
+  <title>{{ title }} | AlumniTrack Mezun Sistemi</title>
+  <meta name="description" content="İstanbul Üniversitesi Mezun Takip Sistemi - MVC View Katmanı">
+  
+  <!-- Typography (DESIGN.MD standard) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 2rem; }
-    .container { max-width: 900px; margin: 0 auto; }
-    h1 { margin-bottom: 0.25rem; }
-    .subtitle { color: #94a3b8; margin-top: 0; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 0.6rem; border-bottom: 1px solid #334155; vertical-align: middle; }
-    th { color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; }
-    form.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-    label { display: flex; flex-direction: column; font-size: 0.85rem; color: #94a3b8; gap: 0.3rem; }
-    input { padding: 0.55rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #e2e8f0; }
-    .btn { display: inline-block; padding: 0.5rem 0.9rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; text-decoration: none; font-size: 0.85rem; }
-    .btn-primary { background: #6366f1; color: #fff; }
-    .btn-primary:hover { background: #4f46e5; }
-    .btn-warning { background: #b45309; color: #fff; }
-    .btn-patch { background: #7c3aed; color: #fff; }
-    .btn-danger { background: #b91c1c; color: #fff; }
-    .btn-light { background: #334155; color: #e2e8f0; }
+    :root {
+      --bg-main: #090d16;
+      --bg-card: rgba(17, 24, 39, 0.85);
+      --bg-card-hover: rgba(26, 36, 56, 0.95);
+      --bg-surface: #131c2e;
+      --bg-input: #0c121e;
+
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: #6366f1;
+      --border-hover: rgba(255, 255, 255, 0.16);
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-glow: rgba(79, 70, 229, 0.35);
+
+      --color-blue: #3b82f6;
+      --color-purple: #8b5cf6;
+      --color-emerald: #10b981;
+      --color-amber: #f59e0b;
+      --color-rose: #ef4444;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-main);
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-image: 
+        radial-gradient(at 10% 15%, rgba(79, 70, 229, 0.15) 0px, transparent 40%),
+        radial-gradient(at 90% 85%, rgba(6, 182, 212, 0.1) 0px, transparent 45%),
+        radial-gradient(at 50% 50%, rgba(139, 92, 246, 0.08) 0px, transparent 50%);
+      background-attachment: fixed;
+      -webkit-font-smoothing: antialiased;
+      padding: 0;
+    }
+
+    /* Top Navigation */
+    .mvc-navbar {
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0.85rem 1.75rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--primary), #8b5cf6);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px var(--primary-glow);
+      font-size: 1.2rem;
+    }
+
+    .brand-text h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+
+    .brand-text span {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .nav-badges {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+      flex: 1;
+      width: 100%;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .page-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 0.35rem;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.25s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(99, 102, 241, 0.25);
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-subtle);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.9rem 1rem;
+      vertical-align: middle;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.75);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    td {
+      background: rgba(17, 24, 39, 0.45);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #e2e8f0;
+      font-size: 0.92rem;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(99, 102, 241, 0.06); }
+
+    /* Forms */
+    form.grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      gap: 0.4rem;
+    }
+
+    input {
+      padding: 0.7rem 0.9rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-input);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      padding: 0.6rem 1.15rem;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #6366f1);
+      color: #ffffff;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #d97706, #f59e0b);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-patch {
+      background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+    }
+
+    .btn-light {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+    }
+
+    .btn-light:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: var(--border-hover);
+    }
+
     .full { grid-column: span 2; }
-    .actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .actions { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
     .actions form { margin: 0; }
-    .alert { padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
-    .alert-error { background: #7f1d1d; color: #fecaca; }
-    .alert-success { background: #14532d; color: #bbf7d0; }
-    .badge { background: #312e81; color: #c7d2fe; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.8rem; }
-    code { color: #fbbf24; }
-    a { color: #a5b4fc; }
-    dl { display: grid; grid-template-columns: 140px 1fr; gap: 0.5rem; }
-    dt { color: #94a3b8; }
+
+    /* Alerts */
+    .alert {
+      padding: 0.9rem 1.25rem;
+      border-radius: var(--radius-md);
+      margin-bottom: 1.25rem;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #6ee7b7;
+    }
+
+    /* Badges & Code */
+    .badge {
+      background: rgba(99, 102, 241, 0.15);
+      color: #c7d2fe;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      color: #fbbf24;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    a {
+      color: #818cf8;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: #a5b4fc;
+      text-decoration: underline;
+    }
+
+    dl {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 0.85rem;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 1.25rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 1.25rem;
+    }
+
+    dt {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+
+    dd {
+      color: #f8fafc;
+      font-size: 0.95rem;
+    }
+
+    /* Footer */
+    .mvc-footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 1.5rem;
+      background: rgba(9, 13, 22, 0.85);
+      margin-top: auto;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .footer-nav {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 640px) {
+      form.grid { grid-template-columns: 1fr; }
+      .full { grid-column: span 1; }
+      dl { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
-  <main class="container">
-    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 0.5rem;">
-      <h1 style="margin: 0;">🎓 {{ title }}</h1>
-      <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.4rem;">
-        <span class="badge" style="background: #064e3b; color: #a7f3d0; border: 1px solid #059669; padding: 0.35rem 0.7rem; font-weight: 600; font-size: 0.8rem;">
-          🟢 DB: SQLite (alumni.db)
+  <!-- Header / Navigation Bar -->
+  <header class="mvc-navbar">
+    <div class="nav-inner">
+      <a href="/" class="brand-link">
+        <div class="brand-icon">🎓</div>
+        <div class="brand-text">
+          <h1>AlumniTrack</h1>
+          <span>İstanbul Üniversitesi Mezun Sistemi</span>
+        </div>
+      </a>
+      <div class="nav-badges">
+        <a href="/" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+          🏠 Web Portalı
+        </a>
+        <a href="/docs" target="_blank" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+          ⚡ Swagger API
+        </a>
+        <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">
+          🟢 SQLite
         </span>
-        <span class="badge" style="background: #1e1b4b; color: #c7d2fe; border: 1px solid #4338ca; padding: 0.35rem 0.7rem; font-size: 0.8rem;">
-          ⚙️ Migration: Alembic <code>4b4900ce1c26</code>
+        <span class="badge" style="background: rgba(99, 102, 241, 0.12); color: #c7d2fe; border-color: rgba(99, 102, 241, 0.3);">
+          ⚙️ Alembic Active
         </span>
       </div>
     </div>
-    <p class="subtitle">Week 4 & 5 · MVC View Layer · SQLAlchemy + Alembic Persistent Storage</p>
+  </header>
 
-    {% if error %}<div class="alert alert-error" id="errorAlert">{{ error }}</div>{% endif %}
-    {% if success %}<div class="alert alert-success" id="successAlert">{{ success }}</div>{% endif %}
+  <!-- Main Content -->
+  <main class="container">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">🎓 {{ title }}</h1>
+        <p class="subtitle">Week 4 &amp; 5 · MVC View Katmanı · SQLAlchemy + Alembic Kalıcı Depolama</p>
+      </div>
+    </div>
+
+    {% if error %}<div class="alert alert-error" id="errorAlert">⚠️ {{ error }}</div>{% endif %}
+    {% if success %}<div class="alert alert-success" id="successAlert">✅ {{ success }}</div>{% endif %}
 
     {% block content %}{% endblock %}
-
-    <p><a href="/users">Mezun Listesi</a> · <a href="/docs">Swagger</a> · <a href="/api/users">JSON (/api/users)</a></p>
   </main>
+
+  <footer class="mvc-footer">
+    <div class="footer-nav">
+      <a href="/users">Mezun Listesi (/users)</a>
+      <span>•</span>
+      <a href="/">Ana Sayfa Portal</a>
+      <span>•</span>
+      <a href="/docs" target="_blank">Swagger API</a>
+      <span>•</span>
+      <a href="/api/users" target="_blank">JSON API (/api/users)</a>
+    </div>
+    <p>© 2026 İstanbul Üniversitesi · YBSB3001 Web Programlama</p>
+  </footer>
 </body>
 </html>

@@ -1,14 +1,26 @@
 {# ===================================================================
-   WEEK 4: VIEW - users/not_found.html
+   WEEK 4: VIEW - users/not_found.html (AlumniTrack Design System)
      Rendered with 404 when a user id does not exist.
    =================================================================== #}
 {% extends "layout.html" %}
 {% block content %}
 
-<section class="card" id="notFound">
-  <h2>404 - Mezun bulunamadı</h2>
-  <p>#{{ user_id }} numaralı mezun kaydı yok.</p>
-  <a class="btn btn-light" href="/users">Listeye Dön</a>
+<section class="card" id="notFound" style="max-width: 650px; margin: 2rem auto; text-align: center; padding: 3rem 2rem;">
+  <div style="font-size: 3.5rem; margin-bottom: 0.75rem;">🔍</div>
+  <h2 style="color: #f87171; justify-content: center; font-size: 1.5rem; margin-bottom: 0.5rem;">
+    404 - Mezun Bulunamadı
+  </h2>
+  <p style="color: #cbd5e1; font-size: 1rem; margin-bottom: 1.5rem; line-height: 1.6;">
+    Sistemde <code style="font-size: 1.05rem;">#{{ user_id }}</code> numaralı bir mezun kaydı bulunamadı. Silinmiş ya da hiç eklenmemiş olabilir.
+  </p>
+  <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+    <a class="btn btn-primary" href="/users">
+      📋 Mezun Listesine Dön
+    </a>
+    <a class="btn btn-light" href="/">
+      🏠 Web Portalı
+    </a>
+  </div>
 </section>
 
 {% endblock %}
