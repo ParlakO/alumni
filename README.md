@@ -4,6 +4,13 @@ Bu proje, **İstanbul Üniversitesi Web Programlama (YBSB3001)** dersi kapsamın
 
 ---
 
+> 📚 **Kurumsal Standartlar & Dokümantasyon:**
+> - 🎨 **[Marka Kimliği Kılavuzu (brand.md)](#-marka-kimliği-kılavuzu-brandmd):** Kurumsal değerler, logo, tipografi ve tonlama rehberi (`brand.md`).
+> - 📐 **[Tasarım Sistemi Spesifikasyonu (DESIGN.MD)](#-tasarım-sistemi-spesifikasyonu-designmd):** `styles.refero.design` ve `VoltAgent/awesome-design-md` uyumlu UI/UX spesifikasyonu (`DESIGN.MD`).
+> - 📊 **[Veri Tasarımı Dokümantasyonu (ddd.md)](ddd.md):** 1:N ve N:M ilişkisel şemalar, DTO'lar ve RESTRICT politikaları.
+
+---
+
 ## 📅 Haftalık Gelişim Adımları (Week Breakdown)
 
 Proje, ders müfredatındaki 6 haftalık kazanımları açık ve modüler biçimde yansıtır:
@@ -35,6 +42,25 @@ Proje, ders müfredatındaki 6 haftalık kazanımları açık ve modüler biçim
 - **🔢 Sıralı Listeleme:** Kullanıcıların ID'ye göre sıralı (`ordered by ID`) listelenmesi.
 - **📚 Etkileşimli Swagger Dokümantasyonu:** Uç noktaların kontrolcü ve haftalara göre gruplandığı Swagger UI (`/docs`).
 - **🐳 Docker & Docker Compose Desteği:** `docker compose up --build` ile ortam bağımsız tek komutla çalıştırma.
+
+---
+
+## 🎨 Marka Kimliği Kılavuzu (brand.md)
+
+Projenin kurumsal kimliği, iletişim tonu ve tasarım yönergeleri [`brand.md`](brand.md) dosyasında belgelenmiştir:
+- **Marka Adı:** AlumniTrack (İstanbul Üniversitesi Mezun Takip Sistemi)
+- **Misyon & Değerler:** Akademi ile sanayi arasında güvenilir, şeffaf ve ilişkisel mezun bilgi ekosistemi.
+- **Tipografi & Renk:** Plus Jakarta Sans & JetBrains Mono, koyu tema uyumlu derin indigo (`#4f46e5`) ve zümrüt yeşili (`#10b981`) paleti.
+- 🔗 **Detaylı İncele:** [`brand.md`](brand.md)
+
+---
+
+## 📐 Tasarım Sistemi Spesifikasyonu (DESIGN.MD)
+
+Tasarım dili, [`styles.refero.design`](https://refero.design) ve [`VoltAgent/awesome-design-md`](https://github.com/VoltAgent/awesome-design-md) standartlarına uygun olarak [`DESIGN.MD`](DESIGN.MD) dosyasında eksiksiz yapılandırılmıştır:
+- **Tasarım Felsefesi:** Modern cam morfolojisi (glassmorphism), katmanlı derinlik, yoğun fakat nefes alan bilgi mimarisi ve geliştirici odaklı açıklık.
+- **Bileşenler:** Sabit gezinme çubuğu, vitrin hero bölümü, 4 sütunlu canlı istatistik gridi, çoklu sekme yöneticisi (Mezunlar / İlanlar / Başvurular), interaktif modal pencereleri ve toast bildirim sistemi.
+- 🔗 **Detaylı İncele:** [`DESIGN.MD`](DESIGN.MD)
 
 ---
 
@@ -336,6 +362,8 @@ alumni/
 ├── seed.py                              # Veritabanı tohumlama CLI betiği
 ├── test_api.py                          # UserModel & Controller test paketi
 ├── test_middlewares.py                  # Logger, Guardian, 404 & 5xx test paketi
+├── brand.md                             # Marka kimliği ve iletişim standartları
+├── DESIGN.MD                            # Tasarım sistemi spesifikasyonu (styles.refero.design & VoltAgent)
 ├── ddd.md                               # Data Design Documentation
 └── README.md                            # Proje dokümantasyonu
 ```
