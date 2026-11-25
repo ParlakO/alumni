@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
-from fastapi import APIRouter, HTTPException, status, Response, Depends, Query
+from fastapi import APIRouter, HTTPException, Request, status, Response, Depends, Query
 from sqlalchemy.orm import Session
+from app.auth import get_current_user_optional, require_auth, require_admin
 from app.database import get_db
 from app.models import (
     User,
@@ -17,9 +18,10 @@ from app.models import (
 )
 
 # ===================================================================
-# WEEK 4, 5, 6: ApiUserController (/api/users)
+# WEEK 4, 5, 6, 7: ApiUserController (/api/users)
 # Manages users, nested job postings (/api/users/:id/jobs),
-# and eager-loaded include queries (/api/users/:id?include=jobs).
+# and eager-loaded include queries (/api/users/:id?include=jobs)
+# with Role-Based & Ownership Authorization.
 # ===================================================================
 
 router = APIRouter(
@@ -28,15 +30,17 @@ router = APIRouter(
 )
 
 
-# --- 1. GET /api/users (List all users) ---
+# --- 1. GET /api/users (List all users: guest=no, graduate=yes, admin=yes) ---
 @router.get("", response_model=List[User], summary="[ApiUserController] List users ordered by ID")
 async def get_api_users(
     search: Optional[str] = None,
     department: Optional[str] = None,
+    current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
     """
-    Returns all users ordered by ID from database with optional search and department filters.
+    Returns all users ordered by ID (never returns password_hash).
+    Requires authentication (graduate or admin).
     """
     return user_model.get_all(search=search, department=department, order_by_id=True, db=db)
 
@@ -50,11 +54,11 @@ async def get_api_users(
 async def get_api_user_by_id(
     user_id: int,
     include: Optional[str] = Query(None, description="Set to 'jobs' to include user's job postings via LEFT JOIN"),
+    current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
     """
-    [Week 6: Include] Fetches a single user by ID.
-    If ?include=jobs is specified, executes a LEFT JOIN and returns user with their jobs list.
+    Fetches a single user by ID. Requires authentication (graduate or admin).
     """
     include_jobs = (include == "jobs")
     user = user_model.get_by_id(user_id, include_jobs=include_jobs, db=db)
@@ -63,41 +67,93 @@ async def get_api_user_by_id(
     return user
 
 
-# --- 3. POST /api/users (Create user) ---
+# --- 3. POST /api/users (Sign up / Create user: guest=yes, graduate=no, admin=yes) ---
 @router.post("", response_model=User, status_code=status.HTTP_201_CREATED, summary="[ApiUserController] Create a user in database")
-async def create_api_user(user_in: UserCreate, db: Session = Depends(get_db)):
-    """Creates a new user. Returns 400 Bad Request if explicit ID already exists."""
+async def create_api_user(
+    user_in: UserCreate,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """
+    Creates a new user.
+    Permission matrix: guest=yes (always role='graduate'), graduate=no (403), admin=yes.
+    """
+    current_user = get_current_user_optional(request)
+    if current_user and current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not allowed")
+
+    # Guests cannot self-assign admin role
+    if not current_user or current_user.get("role") != "admin":
+        user_in = user_in.model_copy(update={"role": "graduate"})
+
     try:
         return user_model.create(user_in, db=db)
     except ValueError as e:
+        code = status.HTTP_409_CONFLICT if "Email" in str(e) else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=str(e))
+
+
+# --- 4. PUT /api/users/:id (Change profile: guest=no, graduate=own, admin=yes) ---
+@router.put("/{user_id}", response_model=User, summary="[ApiUserController] Replace a user in DB (Full Update)")
+async def update_api_user(
+    user_id: int,
+    user_in: UserUpdate,
+    current_user: dict = Depends(require_auth),
+    db: Session = Depends(get_db)
+):
+    """
+    Completely replaces user fields in database.
+    Graduate can only update their own profile; Admin can update any profile.
+    """
+    is_admin = current_user.get("role") == "admin"
+    if not is_admin and current_user["id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not allowed")
+
+    try:
+        updated_user = user_model.update(user_id, user_in, allow_role_change=is_admin, db=db)
+    except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-
-# --- 4. PUT /api/users/:id (Full Update) ---
-@router.put("/{user_id}", response_model=User, summary="[ApiUserController] Replace a user in DB (Full Update)")
-async def update_api_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)):
-    """Completely replaces user fields in database. Returns 404 Not Found if user doesn't exist."""
-    updated_user = user_model.update(user_id, user_in, db=db)
     if not updated_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return updated_user
 
 
-# --- 5. PATCH /api/users/:id (Partial Update) ---
+# --- 5. PATCH /api/users/:id (Partial Update: guest=no, graduate=own, admin=yes) ---
 @router.patch("/{user_id}", response_model=User, summary="[ApiUserController] Partially update a user in DB")
-async def patch_api_user(user_id: int, user_in: UserPatch, db: Session = Depends(get_db)):
-    """Partially updates user fields in database."""
-    patched_user = user_model.patch(user_id, user_in, db=db)
+async def patch_api_user(
+    user_id: int,
+    user_in: UserPatch,
+    current_user: dict = Depends(require_auth),
+    db: Session = Depends(get_db)
+):
+    """
+    Partially updates user fields in database.
+    Graduate can only update their own profile; Admin can update any profile.
+    """
+    is_admin = current_user.get("role") == "admin"
+    if not is_admin and current_user["id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not allowed")
+
+    try:
+        patched_user = user_model.patch(user_id, user_in, allow_role_change=is_admin, db=db)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
     if not patched_user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return patched_user
 
 
-# --- 6. DELETE /api/users/:id (Delete user with RESTRICT rule) ---
+# --- 6. DELETE /api/users/:id (Delete user: guest=no, graduate=no, admin=yes) ---
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, summary="[ApiUserController] Delete a user from DB")
-async def delete_api_user(user_id: int, db: Session = Depends(get_db)):
+async def delete_api_user(
+    user_id: int,
+    current_user: dict = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """
-    Deletes user by ID.
+    Deletes user by ID (Admin only).
     Enforces RESTRICT deletion rule: returns 409 Conflict if user has active job postings.
     """
     try:
@@ -106,15 +162,14 @@ async def delete_api_user(user_id: int, db: Session = Depends(get_db)):
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except ValueError as e:
-        # RESTRICT deletion rule violation
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 # ===================================================================
-# WEEK 6: NESTED ROUTES — Whose posting? The URL says!
+# NESTED ROUTES — Whose posting? The URL says (and Auth verifies!)
 # ===================================================================
 
-# --- 7. POST /api/users/:id/jobs (Create job posting for user) ---
+# --- 7. POST /api/users/:id/jobs (Post a job: guest=no, graduate=own, admin=yes) ---
 @router.post(
     "/{user_id}/jobs",
     response_model=JobPostingResponse,
@@ -124,14 +179,17 @@ async def delete_api_user(user_id: int, db: Session = Depends(get_db)):
 async def create_user_job(
     user_id: int,
     job_in: JobPostingCreate,
+    current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
     """
-    [Week 6 Nested Route] The URL specifies user_id (:id).
-    The request body carries { "title": "...", "company": "..." } and NEVER contains user_id.
-    - If user does not exist -> 404 User not found
-    - If user exists -> 201 Created with job posting details
+    Creates a job posting for user (:id).
+    Graduate A posting for user B -> 403 {"error": "not allowed"}.
+    Admin may post for any user.
     """
+    if current_user.get("role") != "admin" and current_user["id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not allowed")
+
     try:
         return job_model.create(user_id=user_id, job_data=job_in, db=db)
     except KeyError as e:
@@ -146,12 +204,10 @@ async def create_user_job(
 )
 async def get_user_jobs(
     user_id: int,
+    current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
-    """
-    Returns all job postings posted by user (:id).
-    Returns 404 Not Found if user does not exist.
-    """
+    """Returns all job postings posted by user (:id)."""
     if not user_model.exists_by_id(user_id, db=db):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return job_model.get_by_user_id(user_id=user_id, db=db)
@@ -165,12 +221,12 @@ async def get_user_jobs(
 )
 async def get_user_applications(
     user_id: int,
+    current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
-    """
-    Returns all job applications submitted by user (:id).
-    Returns 404 Not Found if user does not exist.
-    """
+    """Returns all job applications submitted by user (:id). Graduate may only view own applications."""
+    if current_user.get("role") != "admin" and current_user["id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not allowed")
     if not user_model.exists_by_id(user_id, db=db):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return application_model.get_by_user_id(user_id=user_id, db=db)

@@ -8,9 +8,17 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.controllers import api_user_controller, user_controller, api_job_controller, api_application_controller
+from app.controllers import (
+    api_user_controller,
+    user_controller,
+    api_job_controller,
+    api_application_controller,
+    api_auth_controller,
+    web_auth_controller,
+)
+from app.auth import require_admin
 from app.logger import log_error_to_file
-from app.middleware import LoggerMiddleware, Guardian404Middleware
+from app.middleware import AuthMiddleware, LoggerMiddleware, Guardian404Middleware
 
 # ===================================================================
 # SWAGGER & APPLICATION CONFIGURATION (WEEK 1 - WEEK 6 PROGRESSION)
@@ -78,6 +86,7 @@ class MethodOverrideMiddleware:
         await self.app(scope, receive, send)
 
 
+app.add_middleware(AuthMiddleware)
 app.add_middleware(MethodOverrideMiddleware)
 app.add_middleware(Guardian404Middleware)
 app.add_middleware(LoggerMiddleware)
@@ -141,11 +150,12 @@ async def http_exception_guardian(request: Request, exc: StarletteHTTPException)
             }
         )
 
+    error_text = str(exc.detail) if exc.status_code in (401, 403) else "HTTP Error"
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "status_code": exc.status_code,
-            "error": "HTTP Error",
+            "error": error_text,
             "reason": str(exc.detail),
             "detail": exc.detail,
             "path": request.url.path
@@ -338,8 +348,14 @@ async def health_check():
 
 
 @app.post("/api/seed", summary="Seed Database with Fake Alumni Records, Jobs & Applications", tags=["Week 1 - Core & Utilities"])
-async def trigger_seed(count: int = 50, reset: bool = False):
-    """[Week 5 & 6: Factory & Seeder] Seeds the database with realistic alumni, jobs, and applications."""
+async def trigger_seed(
+    count: int = 50,
+    reset: bool = False,
+    request: Request = None,
+):
+    """[Admin Only] Seeds the database with realistic alumni, jobs, and applications."""
+    if request is not None:
+        require_admin(request)
     from seed import seed_database_all
     totals = seed_database_all(
         users_count=count,
@@ -355,8 +371,11 @@ async def trigger_seed(count: int = 50, reset: bool = False):
 
 
 # ===================================================================
-# WEEK 4: Register Controllers (UserController & ApiUserController)
+# REGISTER CONTROLLERS (API & Web Views)
 # ===================================================================
+
+# Auth & Admin API: /api/register, /api/login, /api/logout, /api/me, /api/admin/*
+app.include_router(api_auth_controller.router)
 
 # Controller 1: /api/users (Users & Nested Job/Application Routes)
 app.include_router(api_user_controller.router)
@@ -369,6 +388,9 @@ app.include_router(api_application_controller.router)
 
 # Controller 4: /users (View Layer)
 app.include_router(user_controller.router)
+
+# Controller 5: Auth, User-Specific & Admin HTML Views (/register, /login, /logout, /me, /my-jobs, /my-applications, /admin)
+app.include_router(web_auth_controller.router)
 
 
 if __name__ == "__main__":

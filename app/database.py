@@ -25,6 +25,8 @@ class UserRecord(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(120), nullable=False)
     department = Column(String(100), nullable=False)
+    password_hash = Column(String(255), nullable=False, default="")
+    role = Column(String(30), nullable=False, default="graduate")
 
     # 1:N Relationship (one user -> many job postings)
     jobs = relationship("JobPostingRecord", back_populates="owner", cascade="all, delete-orphan")
@@ -34,11 +36,13 @@ class UserRecord(Base):
     applied_jobs = relationship("JobPostingRecord", secondary="applications", back_populates="applicants", viewonly=True)
 
     def to_dict(self, include_jobs: bool = False) -> dict:
+        """Serializes user safely. NEVER includes password_hash."""
         data = {
             "id": self.id,
             "name": self.name,
             "email": self.email,
-            "department": self.department
+            "department": self.department,
+            "role": self.role or "graduate"
         }
         if include_jobs and self.jobs is not None:
             data["jobs"] = [job.to_dict() for job in self.jobs]
@@ -115,14 +119,57 @@ def get_db():
 
 
 def seed_database():
-    """Initializes tables and seeds default records if tables are empty."""
+    """Initializes tables and seeds default records (including admin & graduates with bcrypt passwords)."""
+    from sqlalchemy import inspect, text
+    from app.auth import hash_password
+
     Base.metadata.create_all(bind=engine)
+
+    # Ensure legacy SQLite databases get new auth columns seamlessly if migration hasn't run yet
+    inspector = inspect(engine)
+    if "users" in inspector.get_table_names():
+        existing_cols = {c["name"] for c in inspector.get_columns("users")}
+        with engine.begin() as conn:
+            if "password_hash" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) NOT NULL DEFAULT ''"))
+            if "role" not in existing_cols:
+                conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(30) NOT NULL DEFAULT 'graduate'"))
+
     with SessionLocal() as db:
         if db.query(UserRecord).count() == 0:
             seed_users = [
-                UserRecord(id=1, name="Ada", email="ada@iu.edu.tr", department="Computer Engineering"),
-                UserRecord(id=2, name="Can", email="can@iu.edu.tr", department="MIS"),
-                UserRecord(id=3, name="Elif", email="elif@iu.edu.tr", department="Data Science")
+                UserRecord(
+                    id=1,
+                    name="Ada",
+                    email="ada@iu.edu.tr",
+                    department="Computer Engineering",
+                    password_hash=hash_password("secret123"),
+                    role="graduate",
+                ),
+                UserRecord(
+                    id=2,
+                    name="Can",
+                    email="can@iu.edu.tr",
+                    department="MIS",
+                    password_hash=hash_password("secret123"),
+                    role="graduate",
+                ),
+                UserRecord(
+                    id=3,
+                    name="Elif",
+                    email="elif@iu.edu.tr",
+                    department="Data Science",
+                    password_hash=hash_password("secret123"),
+                    role="graduate",
+                ),
+                UserRecord(
+                    id=4,
+                    name="Osman Parlak",
+                    email="osman@iu.edu.tr",
+                    department="Yönetim Bilişim Sistemleri",
+                    password_hash=hash_password("admin123"),
+                    role="admin",
+                ),
             ]
             db.add_all(seed_users)
             db.commit()
@@ -143,3 +190,33 @@ def seed_database():
             ]
             db.add_all(seed_applications)
             db.commit()
+        else:
+            # Backfill missing password hashes for pre-existing users & ensure an admin exists
+            updated = False
+            default_grad_hash = None
+            for u in db.query(UserRecord).all():
+                if not u.password_hash:
+                    if default_grad_hash is None:
+                        default_grad_hash = hash_password("secret123")
+                    u.password_hash = default_grad_hash
+                    updated = True
+                if not u.role:
+                    u.role = "graduate"
+                    updated = True
+            has_admin = db.query(UserRecord).filter(UserRecord.role == "admin").first() is not None
+            if not has_admin:
+                admin_user = db.query(UserRecord).filter(UserRecord.email == "osman@iu.edu.tr").first()
+                if admin_user:
+                    admin_user.role = "admin"
+                    admin_user.password_hash = hash_password("admin123")
+                else:
+                    db.add(UserRecord(
+                        name="Osman Parlak",
+                        email="osman@iu.edu.tr",
+                        department="Yönetim Bilişim Sistemleri",
+                        password_hash=hash_password("admin123"),
+                        role="admin",
+                    ))
+                updated = True
+            if updated:
+                db.commit()

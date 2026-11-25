@@ -449,19 +449,48 @@
           <span>İstanbul Üniversitesi Mezun Sistemi</span>
         </div>
       </a>
+      {% set nav_user = current_user if current_user is defined and current_user else request.state.user if request is defined and request.state is defined and request.state.user is defined else None %}
       <div class="nav-badges">
         <a href="/" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
-          🏠 Web Portalı
+          🏠 Portal
         </a>
+        {% if nav_user %}
+          <a href="/users" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+            🎓 Mezunlar
+          </a>
+          <a href="/me" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+            👤 Profilim
+          </a>
+          {% if nav_user.role == 'graduate' %}
+            <a href="/my-jobs" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+              💼 İlanlarım
+            </a>
+            <a href="/my-applications" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+              📋 Başvurularım
+            </a>
+          {% endif %}
+          {% if nav_user.role == 'admin' %}
+            <a href="/admin" class="btn btn-warning" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+              🛡️ Admin Paneli
+            </a>
+          {% endif %}
+          <span class="badge" style="{% if nav_user.role == 'admin' %}background: rgba(245, 158, 11, 0.16); color: #fcd34d; border-color: rgba(245, 158, 11, 0.4);{% else %}background: rgba(16, 185, 129, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.3);{% endif %}">
+            {{ nav_user.name }} ({{ nav_user.role }})
+          </span>
+          <a href="/logout" class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+            Çıkış
+          </a>
+        {% else %}
+          <a href="/login" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+            🔑 Giriş Yap
+          </a>
+          <a href="/register" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+            ✨ Kayıt Ol
+          </a>
+        {% endif %}
         <a href="/docs" target="_blank" class="btn btn-light" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
-          ⚡ Swagger API
+          ⚡ Swagger
         </a>
-        <span class="badge" style="background: rgba(16, 185, 129, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">
-          🟢 DB: SQLite (alumni.db)
-        </span>
-        <span class="badge" style="background: rgba(99, 102, 241, 0.12); color: #c7d2fe; border-color: rgba(99, 102, 241, 0.3);">
-          ⚙️ Migration: Alembic <code>4b4900ce1c26</code>
-        </span>
       </div>
     </div>
   </header>

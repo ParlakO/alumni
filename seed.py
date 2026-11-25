@@ -46,6 +46,22 @@ def seed_database_all(
             db.commit()
 
         # --- 1. Seed Users ---
+        from app.auth import hash_password
+        default_pw_hash = hash_password("secret123")
+
+        # Always ensure default admin exists after reset
+        if reset:
+            admin_user = UserRecord(
+                id=1,
+                name="Osman Parlak",
+                email="osman@iu.edu.tr",
+                department="Yönetim Bilişim Sistemleri",
+                password_hash=hash_password("admin123"),
+                role="admin"
+            )
+            db.add(admin_user)
+            db.commit()
+
         max_user_id = db.query(func.max(UserRecord.id)).scalar() or 0
         start_user_id = max_user_id + 1
 
@@ -56,7 +72,9 @@ def seed_database_all(
                 id=u["id"],
                 name=u["name"],
                 email=u["email"],
-                department=u["department"]
+                department=u["department"],
+                password_hash=default_pw_hash,
+                role="graduate"
             )
             for u in user_data
         ]

@@ -1,6 +1,7 @@
-from typing import List
-from fastapi import APIRouter, HTTPException, status, Response, Depends
+from typing import List, Optional
+from fastapi import APIRouter, Body, HTTPException, status, Response, Depends
 from sqlalchemy.orm import Session
+from app.auth import require_auth
 from app.database import get_db
 from app.models import (
     User,
@@ -12,9 +13,8 @@ from app.models import (
 )
 
 # ===================================================================
-# WEEK 6: ApiJobController (/api/jobs)
-# Direct routes for job postings and applications.
-# Handles Many-to-Many applications and duplicate 409 Conflict enforcement.
+# ApiJobController (/api/jobs)
+# Direct routes for job postings and applications with Role & Ownership checks.
 # ===================================================================
 
 router = APIRouter(
@@ -23,30 +23,38 @@ router = APIRouter(
 )
 
 
-# --- 1. GET /api/jobs (Direct Route: List all job postings) ---
+# --- 1. GET /api/jobs (Public: guest=yes, graduate=yes, admin=yes) ---
 @router.get("", response_model=List[JobPostingResponse], summary="[Direct Route] List all job postings")
 async def get_all_jobs(db: Session = Depends(get_db)):
-    """[Direct Route] Returns all job postings in the system ordered by ID."""
+    """[Public] Returns all job postings in the system ordered by ID."""
     return job_model.get_all(db=db)
 
 
-# --- 2. GET /api/jobs/:id (Direct Route: Get one job posting) ---
+# --- 2. GET /api/jobs/:id (Public: guest=yes, graduate=yes, admin=yes) ---
 @router.get("/{job_id}", response_model=JobPostingResponse, summary="[Direct Route] Get job posting by ID")
 async def get_job_by_id(job_id: int, db: Session = Depends(get_db)):
-    """[Direct Route] Returns a single job posting by ID. Returns 404 if not found."""
+    """[Public] Returns a single job posting by ID. Returns 404 if not found."""
     job = job_model.get_by_id(job_id, db=db)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job posting not found")
     return job
 
 
-# --- 3. DELETE /api/jobs/:id (Direct Route: Delete a job posting) ---
+# --- 3. DELETE /api/jobs/:id (Owner or Admin only) ---
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT, summary="[Direct Route] Delete job posting")
-async def delete_job(job_id: int, db: Session = Depends(get_db)):
-    """[Direct Route] Deletes a job posting and its cascaded applications."""
-    deleted = job_model.delete(job_id, db=db)
-    if not deleted:
+async def delete_job(
+    job_id: int,
+    current_user: dict = Depends(require_auth),
+    db: Session = Depends(get_db)
+):
+    """Deletes a job posting (only owner or admin)."""
+    job = job_model.get_by_id(job_id, db=db)
+    if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job posting not found")
+    if current_user.get("role") != "admin" and job["user_id"] != current_user["id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not allowed")
+
+    job_model.delete(job_id, db=db)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -54,39 +62,41 @@ async def delete_job(job_id: int, db: Session = Depends(get_db)):
 # APPLICATIONS (Many-to-Many via Join Table)
 # ===================================================================
 
-# --- 4. POST /api/jobs/:id/applications (Apply to a job posting) ---
+# --- 4. POST /api/jobs/:id/applications (guest=no, graduate=self, admin=no) ---
 @router.post(
     "/{job_id}/applications",
     response_model=ApplicationResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="[Applications Route] Apply to a job posting (enforces UNIQUE & 409 Conflict)"
+    summary="[Applications Route] Apply to a job posting (graduate self only)"
 )
 async def apply_to_job(
     job_id: int,
-    application_in: ApplicationCreate,
+    application_in: Optional[ApplicationCreate] = Body(default=None),
+    current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
     """
-    [Week 6: Applications Route]
-    - Request body: { "userId": 1 }
-    - If job or user does not exist -> 404 Not Found
-    - If user has already applied -> 409 Conflict (UNIQUE constraint)
-    - If successful -> 201 Created
+    Applies the logged-in graduate to job posting (:id).
+    - Admin -> 403 not allowed (admins do not apply to jobs).
+    - Any `userId` in the request body is IGNORED; the applicant is ALWAYS the logged-in user.
+    - Duplicate application -> 409 Conflict.
     """
+    if current_user.get("role") != "graduate":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="not allowed")
+
     try:
         return application_model.apply(
             job_posting_id=job_id,
-            user_id=application_in.userId,
+            user_id=current_user["id"],
             db=db
         )
     except KeyError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
-        # Enforces UNIQUE (user_id, job_posting_id) -> twice: 409 Conflict
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
-# --- 5. GET /api/jobs/:id/applications (List applicants for a job) ---
+# --- 5. GET /api/jobs/:id/applications (Authenticated) ---
 @router.get(
     "/{job_id}/applications",
     response_model=List[ApplicationResponse],
@@ -94,6 +104,7 @@ async def apply_to_job(
 )
 async def get_job_applications(
     job_id: int,
+    current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
     """Returns all applications submitted for job posting (:id)."""
@@ -103,7 +114,7 @@ async def get_job_applications(
     return application_model.get_by_job_id(job_posting_id=job_id, db=db)
 
 
-# --- 6. GET /api/jobs/:id/applicants (List applicant users for a job) ---
+# --- 6. GET /api/jobs/:id/applicants (Authenticated) ---
 @router.get(
     "/{job_id}/applicants",
     response_model=List[User],
@@ -111,12 +122,10 @@ async def get_job_applications(
 )
 async def get_job_applicants(
     job_id: int,
+    current_user: dict = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
-    """
-    Returns the list of User objects (applicants) who applied to job posting (:id).
-    (Week 06: 'the two lists of applicants and applications')
-    """
+    """Returns the list of User objects (applicants, without password_hash) who applied to job (:id)."""
     try:
         return application_model.get_applicants_by_job_id(job_posting_id=job_id, db=db)
     except KeyError as e:

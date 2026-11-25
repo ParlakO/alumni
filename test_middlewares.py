@@ -5,6 +5,12 @@ from app.main import app
 client = TestClient(app, raise_server_exceptions=False)
 
 
+def _get_admin_headers():
+    res = client.post("/api/login", json={"email": "osman@iu.edu.tr", "password": "admin123"})
+    assert res.status_code == 200
+    return {"Authorization": f"Bearer {res.json()['token']}"}
+
+
 def test_logger_middleware_and_normal_request():
     print("\n--- Testing 1: Normal Request & Logger Middleware ---")
     res = client.get("/hello")
@@ -15,7 +21,8 @@ def test_logger_middleware_and_normal_request():
 
 def test_404_guardian_api_with_reason():
     print("\n--- Testing 2: 404 Guardian for API Requests ---")
-    res = client.get("/api/non-existent-endpoint")
+    headers = _get_admin_headers()
+    res = client.get("/api/non-existent-endpoint", headers=headers)
     assert res.status_code == 404
     data = res.json()
     assert data["status_code"] == 404
@@ -25,7 +32,7 @@ def test_404_guardian_api_with_reason():
     print(f"PASS: 404 Guardian returned reason: {data['reason']}")
 
     # 404 on non-existent resource in existing controller
-    res2 = client.get("/api/users/999999")
+    res2 = client.get("/api/users/999999", headers=headers)
     assert res2.status_code == 404
     data2 = res2.json()
     assert "reason" in data2
@@ -51,21 +58,22 @@ def test_generic_404_page_and_browser_redirect():
 
 def test_job_posting_rules_and_invalid_requests():
     print("\n--- Testing 4: JobPosting Validation Rules (Whiteboard #2 & #1) ---")
+    headers = _get_admin_headers()
     # Title missing -> 400 Bad Request
-    res1 = client.post("/api/users/1/jobs", json={"company": "Acme"})
+    res1 = client.post("/api/users/1/jobs", json={"company": "Acme"}, headers=headers)
     assert res1.status_code == 400
     assert "title" in res1.json()["reason"]
     print(f"PASS: Title required check -> 400 Bad Request ({res1.json()['reason']})")
 
     # Company missing -> 400 Bad Request
-    res2 = client.post("/api/users/1/jobs", json={"title": "Junior Developer"})
+    res2 = client.post("/api/users/1/jobs", json={"title": "Junior Developer"}, headers=headers)
     assert res2.status_code == 400
     assert "company" in res2.json()["reason"]
     print(f"PASS: Company required check -> 400 Bad Request ({res2.json()['reason']})")
 
     # Max 120 characters rule: 125 characters -> 400 Bad Request
     long_title = "A" * 125
-    res3 = client.post("/api/users/1/jobs", json={"title": long_title, "company": "Acme"})
+    res3 = client.post("/api/users/1/jobs", json={"title": long_title, "company": "Acme"}, headers=headers)
     assert res3.status_code == 400
     assert "at most 120" in res3.json()["reason"]
     print(f"PASS: Max 120 characters check -> 400 Bad Request ({res3.json()['reason']})")
@@ -78,7 +86,8 @@ def test_job_posting_rules_and_invalid_requests():
             "company": "Trendyol",
             "city": "Istanbul",
             "description": "Kubernetes and FastAPI architecture"
-        }
+        },
+        headers=headers
     )
     assert res4.status_code == 201
     job_data = res4.json()

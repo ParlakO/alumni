@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2>📋 Yaptığım İş Başvuruları ({{ applications|length }})</h2>
+    <a href="/" class="btn btn-light">💼 Tüm İlanlara Göz At</a>
+  </div>
+  {% if applications %}
+  <table>
+    <thead>
+      <tr>
+        <th>Başvuru ID</th>
+        <th>Pozisyon</th>
+        <th>Şirket</th>
+        <th>Durum</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for app in applications %}
+      <tr>
+        <td><code>#{{ app.id }}</code></td>
+        <td><strong>{{ app.job.title if app.job else 'İlan #' ~ app.job_posting_id }}</strong></td>
+        <td>{{ app.job.company if app.job else '-' }}</td>
+        <td><span class="badge">{{ app.status }}</span></td>
+        <td>
+          <form method="POST" action="/my-applications/{{ app.id }}/delete" onsubmit="return confirm('Başvurunuzu geri çekmek istediğinize emin misiniz?');">
+            <button type="submit" class="btn btn-danger" style="padding: 0.35rem 0.7rem; font-size: 0.78rem;">Geri Çek</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: var(--text-muted);">Henüz herhangi bir iş ilanına başvurmadınız. <a href="/">Portaldan ilanlara başvurabilirsiniz.</a></p>
+  {% endif %}
+</div>
+{% endblock %}

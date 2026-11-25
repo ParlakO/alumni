@@ -15,11 +15,12 @@ from app.database import (
 # Pydantic Data Schemas (Validation & Serialization)
 # ===================================================================
 
-# --- 1. User Schemas ---
+# --- 1. User & Auth Schemas ---
 class UserBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, example="Ada")
     email: str = Field(..., min_length=5, max_length=120, example="ada@iu.edu.tr")
     department: str = Field(..., min_length=2, max_length=100, example="Computer Engineering")
+    role: str = Field(default="graduate", example="graduate")
 
 
 class UserCreate(BaseModel):
@@ -27,22 +28,57 @@ class UserCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=100, example="Ada")
     email: str = Field(..., min_length=5, max_length=120, example="ada@iu.edu.tr")
     department: str = Field(..., min_length=2, max_length=100, example="Computer Engineering")
+    password: str = Field(default="secret123", min_length=6, max_length=128, example="secret123")
+    role: str = Field(default="graduate", example="graduate")
+
+
+class UserRegister(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100, example="Ayşe Yılmaz")
+    email: str = Field(..., min_length=5, max_length=120, example="ayse@iu.edu.tr")
+    department: str = Field(..., min_length=2, max_length=100, example="Yönetim Bilişim Sistemleri")
+    password: str = Field(..., min_length=6, max_length=128, example="secret123")
+
+
+class UserLogin(BaseModel):
+    email: str = Field(..., min_length=3, max_length=120, example="ada@iu.edu.tr")
+    password: str = Field(..., min_length=1, max_length=128, example="secret123")
+
+
+class UserRoleUpdate(BaseModel):
+    role: str = Field(..., example="admin", description="Role: 'graduate' or 'admin'")
 
 
 class UserUpdate(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: str = Field(..., min_length=5, max_length=120)
     department: str = Field(..., min_length=2, max_length=100)
+    password: Optional[str] = Field(None, min_length=6, max_length=128)
+    role: Optional[str] = Field(None)
 
 
 class UserPatch(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     email: Optional[str] = Field(None, min_length=5, max_length=120)
     department: Optional[str] = Field(None, min_length=2, max_length=100)
+    password: Optional[str] = Field(None, min_length=6, max_length=128)
+    role: Optional[str] = Field(None)
 
 
 class User(UserBase):
     id: int
+
+
+class AuthMeResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    department: str
+    role: str
+
+
+class AuthTokenResponse(BaseModel):
+    token: str
+    user: User
 
 
 # --- 2. Job Posting Schemas ---
@@ -71,8 +107,9 @@ class ApplicationCreate(BaseModel):
     """
     POST /api/jobs/:id/applications request body.
     Job Posting ID is passed via URL path parameter (:id).
+    userId in body is optional and ignored by the server; applicant is always the logged-in user.
     """
-    userId: int = Field(..., description="ID of the user applying to the job")
+    userId: Optional[int] = Field(None, description="Ignored on authenticated route; server derives applicant from JWT.")
 
 
 class ApplicationResponse(BaseModel):
@@ -171,7 +208,34 @@ class UserModel:
             if close_needed:
                 session.close()
 
+    def get_by_email(self, email: str, db: Optional[Any] = None) -> Optional[dict]:
+        session, close_needed = self._get_session(db)
+        try:
+            record = session.query(UserRecord).filter(
+                func.lower(UserRecord.email) == email.strip().lower()
+            ).first()
+            return record.to_dict() if record else None
+        finally:
+            if close_needed:
+                session.close()
+
+    def authenticate(self, email: str, password: str, db: Optional[Any] = None) -> Optional[dict]:
+        """Verifies credentials using bcrypt.checkpw and returns safe user dict (without hash)."""
+        from app.auth import verify_password
+        session, close_needed = self._get_session(db)
+        try:
+            record = session.query(UserRecord).filter(
+                func.lower(UserRecord.email) == email.strip().lower()
+            ).first()
+            if not record or not verify_password(password, record.password_hash):
+                return None
+            return record.to_dict()
+        finally:
+            if close_needed:
+                session.close()
+
     def create(self, user_data: UserCreate, db: Optional[Any] = None) -> dict:
+        from app.auth import hash_password, VALID_ROLES
         session, close_needed = self._get_session(db)
         try:
             if user_data.id is not None:
@@ -182,11 +246,21 @@ class UserModel:
                 max_id = session.query(func.max(UserRecord.id)).scalar() or 0
                 assigned_id = max_id + 1
 
+            normalized_email = user_data.email.strip().lower()
+            if session.query(UserRecord).filter(func.lower(UserRecord.email) == normalized_email).first() is not None:
+                raise ValueError("Email already registered")
+
+            role = (user_data.role or "graduate").strip().lower()
+            if role not in VALID_ROLES:
+                raise ValueError("Invalid role. Must be 'graduate' or 'admin'")
+
             new_record = UserRecord(
                 id=assigned_id,
-                name=user_data.name,
-                email=user_data.email,
-                department=user_data.department
+                name=user_data.name.strip(),
+                email=normalized_email,
+                department=user_data.department.strip(),
+                password_hash=hash_password(user_data.password),
+                role=role
             )
             session.add(new_record)
             session.commit()
@@ -196,15 +270,23 @@ class UserModel:
             if close_needed:
                 session.close()
 
-    def update(self, user_id: int, user_data: UserUpdate, db: Optional[Any] = None) -> Optional[dict]:
+    def update(self, user_id: int, user_data: UserUpdate, allow_role_change: bool = False, db: Optional[Any] = None) -> Optional[dict]:
+        from app.auth import hash_password, VALID_ROLES
         session, close_needed = self._get_session(db)
         try:
             record = session.query(UserRecord).filter(UserRecord.id == user_id).first()
             if not record:
                 return None
-            record.name = user_data.name
-            record.email = user_data.email
-            record.department = user_data.department
+            record.name = user_data.name.strip()
+            record.email = user_data.email.strip().lower()
+            record.department = user_data.department.strip()
+            if user_data.password:
+                record.password_hash = hash_password(user_data.password)
+            if allow_role_change and user_data.role is not None:
+                role = user_data.role.strip().lower()
+                if role not in VALID_ROLES:
+                    raise ValueError("Invalid role. Must be 'graduate' or 'admin'")
+                record.role = role
             session.commit()
             session.refresh(record)
             return record.to_dict()
@@ -212,18 +294,44 @@ class UserModel:
             if close_needed:
                 session.close()
 
-    def patch(self, user_id: int, user_data: UserPatch, db: Optional[Any] = None) -> Optional[dict]:
+    def patch(self, user_id: int, user_data: UserPatch, allow_role_change: bool = False, db: Optional[Any] = None) -> Optional[dict]:
+        from app.auth import hash_password, VALID_ROLES
         session, close_needed = self._get_session(db)
         try:
             record = session.query(UserRecord).filter(UserRecord.id == user_id).first()
             if not record:
                 return None
             if user_data.name is not None:
-                record.name = user_data.name
+                record.name = user_data.name.strip()
             if user_data.email is not None:
-                record.email = user_data.email
+                record.email = user_data.email.strip().lower()
             if user_data.department is not None:
-                record.department = user_data.department
+                record.department = user_data.department.strip()
+            if user_data.password is not None:
+                record.password_hash = hash_password(user_data.password)
+            if allow_role_change and user_data.role is not None:
+                role = user_data.role.strip().lower()
+                if role not in VALID_ROLES:
+                    raise ValueError("Invalid role. Must be 'graduate' or 'admin'")
+                record.role = role
+            session.commit()
+            session.refresh(record)
+            return record.to_dict()
+        finally:
+            if close_needed:
+                session.close()
+
+    def update_role(self, user_id: int, new_role: str, db: Optional[Any] = None) -> Optional[dict]:
+        from app.auth import VALID_ROLES
+        role = new_role.strip().lower()
+        if role not in VALID_ROLES:
+            raise ValueError("Invalid role. Must be 'graduate' or 'admin'")
+        session, close_needed = self._get_session(db)
+        try:
+            record = session.query(UserRecord).filter(UserRecord.id == user_id).first()
+            if not record:
+                return None
+            record.role = role
             session.commit()
             session.refresh(record)
             return record.to_dict()

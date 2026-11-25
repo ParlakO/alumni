@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from app.auth import get_current_user_optional
 from app.database import get_db
 from app.models import UserCreate, UserUpdate, UserPatch, user_model
 
@@ -39,7 +40,7 @@ router = APIRouter(
 # Helpers
 # -------------------------------------------------------------------
 def _render(request: Request, template: str, context: dict, status_code: int = 200) -> HTMLResponse:
-    base = {"error": None, "success": None, "form": {}}
+    base = {"error": None, "success": None, "form": {}, "current_user": get_current_user_optional(request)}
     base.update(context)
     return templates.TemplateResponse(request, template, base, status_code=status_code)
 

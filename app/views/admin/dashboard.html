@@ -1,0 +1,132 @@
+{% extends "layout.html" %}
+{% block content %}
+<!-- System Stats -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+  <div class="card" style="margin-bottom: 0; text-align: center;">
+    <div style="color: var(--text-muted); font-size: 0.8rem;">Toplam Kullanıcı</div>
+    <div style="font-size: 1.9rem; font-weight: 800; color: #60a5fa;">{{ stats.total_users }}</div>
+  </div>
+  <div class="card" style="margin-bottom: 0; text-align: center;">
+    <div style="color: var(--text-muted); font-size: 0.8rem;">Admin / Graduate</div>
+    <div style="font-size: 1.9rem; font-weight: 800; color: #fbbf24;">{{ stats.admin_count }} / {{ stats.graduate_count }}</div>
+  </div>
+  <div class="card" style="margin-bottom: 0; text-align: center;">
+    <div style="color: var(--text-muted); font-size: 0.8rem;">Aktif İş İlanları</div>
+    <div style="font-size: 1.9rem; font-weight: 800; color: #a78bfa;">{{ stats.total_jobs }}</div>
+  </div>
+  <div class="card" style="margin-bottom: 0; text-align: center;">
+    <div style="color: var(--text-muted); font-size: 0.8rem;">Toplam Başvuru</div>
+    <div style="font-size: 1.9rem; font-weight: 800; color: #34d399;">{{ stats.total_applications }}</div>
+  </div>
+</div>
+
+<!-- Users & Roles Management -->
+<div class="card">
+  <h2>🛡️ Kullanıcı ve Rol Yönetimi ({{ users|length }})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Ad Soyad</th>
+        <th>E-posta</th>
+        <th>Bölüm</th>
+        <th>Rol</th>
+        <th>İşlemler</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td><code>#{{ u.id }}</code></td>
+        <td><a href="/users/{{ u.id }}"><strong>{{ u.name }}</strong></a></td>
+        <td>{{ u.email }}</td>
+        <td>{{ u.department }}</td>
+        <td>
+          <form method="POST" action="/admin/users/{{ u.id }}/role" style="display: flex; gap: 0.4rem; align-items: center;">
+            <select name="role" style="padding: 0.3rem 0.5rem; border-radius: 6px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-subtle);">
+              <option value="graduate" {% if u.role == 'graduate' %}selected{% endif %}>graduate</option>
+              <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>admin</option>
+            </select>
+            <button type="submit" class="btn btn-light" style="padding: 0.3rem 0.6rem; font-size: 0.78rem;">Kaydet</button>
+          </form>
+        </td>
+        <td class="actions">
+          <a href="/users/{{ u.id }}/edit" class="btn btn-warning" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;">Düzenle</a>
+          {% if u.id != current_user.id %}
+          <form method="POST" action="/admin/users/{{ u.id }}/delete" onsubmit="return confirm('{{ u.name }} silinsin mi?');">
+            <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;">Sil</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Jobs Management -->
+<div class="card">
+  <h2>💼 İş İlanları Yönetimi ({{ jobs|length }})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Pozisyon</th>
+        <th>Şirket</th>
+        <th>Sahibi</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for j in jobs %}
+      <tr>
+        <td><code>#{{ j.id }}</code></td>
+        <td><strong>{{ j.title }}</strong></td>
+        <td>{{ j.company }}</td>
+        <td>{{ user_map[j.user_id].name if j.user_id in user_map else '#' ~ j.user_id }}</td>
+        <td>
+          <form method="POST" action="/admin/jobs/{{ j.id }}/delete" onsubmit="return confirm('İlan #{{ j.id }} silinsin mi?');">
+            <button type="submit" class="btn btn-danger" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;">Sil</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Applications Management -->
+<div class="card">
+  <h2>📋 Başvurular Yönetimi ({{ applications|length }})</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Başvuran</th>
+        <th>İlan</th>
+        <th>Durum Güncelle</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in applications %}
+      <tr>
+        <td><code>#{{ a.id }}</code></td>
+        <td>{{ user_map[a.user_id].name if a.user_id in user_map else '#' ~ a.user_id }}</td>
+        <td>{{ job_map[a.job_posting_id].title if a.job_posting_id in job_map else '#' ~ a.job_posting_id }}</td>
+        <td>
+          <form method="POST" action="/admin/applications/{{ a.id }}/status" style="display: flex; gap: 0.4rem; align-items: center;">
+            <select name="status" style="padding: 0.3rem 0.5rem; border-radius: 6px; background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-subtle);">
+              <option value="applied" {% if a.status == 'applied' %}selected{% endif %}>applied</option>
+              <option value="interview" {% if a.status == 'interview' %}selected{% endif %}>interview</option>
+              <option value="accepted" {% if a.status == 'accepted' %}selected{% endif %}>accepted</option>
+              <option value="rejected" {% if a.status == 'rejected' %}selected{% endif %}>rejected</option>
+            </select>
+            <button type="submit" class="btn btn-primary" style="padding: 0.3rem 0.65rem; font-size: 0.78rem;">Güncelle</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

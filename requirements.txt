@@ -10,3 +10,8 @@ sqlalchemy>=2.0.0
 alembic>=1.13.0
 httpx>=0.28.0
 
+# Week 7+: Authentication & Authorization (bcrypt & JWT)
+bcrypt>=4.0.0
+PyJWT>=2.8.0
+
+

@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+  <h2>➕ Yeni İş İlanı Yayınla</h2>
+  <form method="POST" action="/my-jobs" class="grid">
+    <label>
+      Pozisyon Başlığı *
+      <input type="text" name="title" value="{{ form.title or '' }}" required maxlength="120" placeholder="Örn: Junior Backend Developer">
+    </label>
+    <label>
+      Şirket *
+      <input type="text" name="company" value="{{ form.company or '' }}" required maxlength="100" placeholder="Örn: Acme Corp">
+    </label>
+    <label>
+      Şehir (Opsiyonel)
+      <input type="text" name="city" value="{{ form.city or '' }}" maxlength="100" placeholder="Örn: İstanbul / Remote">
+    </label>
+    <label>
+      Açıklama (Opsiyonel)
+      <input type="text" name="description" value="{{ form.description or '' }}" maxlength="500" placeholder="Kısa iş tanımı">
+    </label>
+    <div class="full">
+      <button type="submit" class="btn btn-primary">İlanı Yayınla</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2>💼 Yayınladığım İş İlanları ({{ jobs|length }})</h2>
+  {% if jobs %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Pozisyon</th>
+        <th>Şirket & Şehir</th>
+        <th>Başvuranlar</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td><code>#{{ job.id }}</code></td>
+        <td><strong>{{ job.title }}</strong></td>
+        <td>{{ job.company }}{% if job.city %} · {{ job.city }}{% endif %}</td>
+        <td>
+          {% if job.applicants %}
+            {% for a in job.applicants %}
+              <span class="badge">{{ a.name }}</span>
+            {% endfor %}
+          {% else %}
+            <span style="color: var(--text-dim);">Henüz başvuru yok</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST" action="/my-jobs/{{ job.id }}/delete" onsubmit="return confirm('Bu ilan silinsin mi?');">
+            <button type="submit" class="btn btn-danger" style="padding: 0.35rem 0.7rem; font-size: 0.78rem;">Sil</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: var(--text-muted);">Henüz yayınladığınız bir iş ilanı bulunmuyor.</p>
+  {% endif %}
+</div>
+{% endblock %}

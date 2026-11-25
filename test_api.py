@@ -67,27 +67,32 @@ async def main():
     # 2. Test ApiUserController (/api/users)
     # -------------------------------------------------------------
     print("\n--- 2. Testing ApiUserController (/api/users) ---")
-    api_users = await get_api_users()
+    admin_user = {"id": 4, "name": "Osman Parlak", "email": "osman@iu.edu.tr", "department": "YBS", "role": "admin"}
+    grad_user_2 = {"id": 2, "name": "Can", "email": "can@iu.edu.tr", "department": "MIS", "role": "graduate"}
+    admin_req = make_request("POST", "/api/users")
+    admin_req.state.user = admin_user
+
+    api_users = await get_api_users(current_user=admin_user)
     assert len(api_users) >= 2
     print(f"PASS: [ApiUserController] GET /api/users -> {len(api_users)} users")
 
-    api_u1 = await get_api_user_by_id(1)
+    api_u1 = await get_api_user_by_id(1, current_user=admin_user)
     assert api_u1["id"] == 1
     print("PASS: [ApiUserController] GET /api/users/1 -> OK")
 
-    new_api_u = await create_api_user(UserCreate(id=9020, name="Api User", email="api@example.com", department="MIS"))
+    new_api_u = await create_api_user(UserCreate(id=9020, name="Api User", email="api@example.com", department="MIS"), request=admin_req)
     assert new_api_u["id"] == 9020
     print("PASS: [ApiUserController] POST /api/users -> OK")
 
-    put_api_u = await update_api_user(9020, UserUpdate(name="Api User Updated", email="api@example.com", department="MIS"))
+    put_api_u = await update_api_user(9020, UserUpdate(name="Api User Updated", email="api@example.com", department="MIS"), current_user=admin_user)
     assert put_api_u["name"] == "Api User Updated"
     print("PASS: [ApiUserController] PUT /api/users/9020 -> OK")
 
-    patch_api_u = await patch_api_user(9020, UserPatch(department="Computer Eng"))
+    patch_api_u = await patch_api_user(9020, UserPatch(department="Computer Eng"), current_user=admin_user)
     assert patch_api_u["department"] == "Computer Eng"
     print("PASS: [ApiUserController] PATCH /api/users/9020 -> OK")
 
-    del_api_res = await delete_api_user(9020)
+    del_api_res = await delete_api_user(9020, current_user=admin_user)
     assert del_api_res.status_code == 204
     print("PASS: [ApiUserController] DELETE /api/users/9020 -> 204 No Content")
 
@@ -156,7 +161,7 @@ async def main():
     assert "storage" in about
     db_status = await get_db_status()
     assert db_status["status"] == "connected"
-    assert db_status["current_revision"] in ("4b4900ce1c26", "8f1c4e2a3b5d", "c3d8f7a1b2c4")
+    assert db_status["current_revision"] in ("4b4900ce1c26", "8f1c4e2a3b5d", "c3d8f7a1b2c4", "d4e9a2f3c5b1")
     print("PASS: Week 1 & 5 endpoints (/hello, /sum, /api/health, /about, /api/db-status) -> OK")
 
     # -------------------------------------------------------------
@@ -168,21 +173,21 @@ async def main():
     from app.models import JobPostingCreate, ApplicationCreate
 
     # 5.1 Nested Route: POST /api/users/:id/jobs (URL says whose posting it is)
-    new_job = await create_user_job(user_id=1, job_in=JobPostingCreate(title="Cloud Engineer", company="Google"))
+    new_job = await create_user_job(user_id=1, job_in=JobPostingCreate(title="Cloud Engineer", company="Google"), current_user=admin_user)
     assert new_job["user_id"] == 1
     assert new_job["title"] == "Cloud Engineer"
     print("PASS: [Nested Route] POST /api/users/1/jobs -> 201 Created")
 
     # 5.2 Nested Route 404: Non-existent user
     try:
-        await create_user_job(user_id=99999, job_in=JobPostingCreate(title="Ghost", company="None"))
+        await create_user_job(user_id=99999, job_in=JobPostingCreate(title="Ghost", company="None"), current_user=admin_user)
         assert False, "Should raise 404"
     except HTTPException as e:
         assert e.status_code == 404
         print("PASS: [Nested Route] POST /api/users/99999/jobs -> 404 User Not Found")
 
     # 5.3 Include Query: GET /api/users/1?include=jobs
-    user_with_jobs = await get_api_user_by_id(user_id=1, include="jobs")
+    user_with_jobs = await get_api_user_by_id(user_id=1, include="jobs", current_user=admin_user)
     assert "jobs" in user_with_jobs
     assert len(user_with_jobs["jobs"]) >= 1
     print(f"PASS: [Include] GET /api/users/1?include=jobs -> returns {len(user_with_jobs['jobs'])} jobs")
@@ -193,14 +198,14 @@ async def main():
     print(f"PASS: [Direct Route] GET /api/jobs -> {len(all_jobs)} jobs")
 
     # 5.5 Applications Route: POST /api/jobs/:id/applications (201 Created)
-    app_result = await apply_to_job(job_id=new_job["id"], application_in=ApplicationCreate(userId=2))
+    app_result = await apply_to_job(job_id=new_job["id"], application_in=ApplicationCreate(userId=2), current_user=grad_user_2)
     assert app_result["status"] == "applied"
     assert app_result["user_id"] == 2
     print("PASS: [Applications Route] POST /api/jobs/:id/applications -> 201 Created")
 
     # 5.6 Duplicate Application Check: (409 Conflict)
     try:
-        await apply_to_job(job_id=new_job["id"], application_in=ApplicationCreate(userId=2))
+        await apply_to_job(job_id=new_job["id"], application_in=ApplicationCreate(userId=2), current_user=grad_user_2)
         assert False, "Should raise 409 Conflict"
     except HTTPException as e:
         assert e.status_code == 409
@@ -208,7 +213,7 @@ async def main():
 
     # 5.7 RESTRICT Delete Rule: Attempt to delete user 1 who has active postings
     try:
-        await delete_api_user(user_id=1)
+        await delete_api_user(user_id=1, current_user=admin_user)
         assert False, "Should raise 409 Conflict due to RESTRICT rule"
     except HTTPException as e:
         assert e.status_code == 409
@@ -221,28 +226,29 @@ async def main():
     )
     from app.models import ApplicationStatusUpdate
 
-    job_apps = await get_job_applications(job_id=new_job["id"])
+    job_apps = await get_job_applications(job_id=new_job["id"], current_user=admin_user)
     assert len(job_apps) >= 1
     print(f"PASS: [Two Lists - 1] GET /api/jobs/:id/applications -> {len(job_apps)} applications")
 
-    job_applicants = await get_job_applicants(job_id=new_job["id"])
+    job_applicants = await get_job_applicants(job_id=new_job["id"], current_user=admin_user)
     assert len(job_applicants) >= 1
     assert job_applicants[0]["id"] == 2
     print(f"PASS: [Two Lists - 2] GET /api/jobs/:id/applicants -> {len(job_applicants)} applicants (User objects)")
 
     # 5.9 Direct Applications CRUD: List, Get, Patch Status, Delete
-    all_apps = await get_all_applications()
+    all_apps = await get_all_applications(current_user=admin_user)
     assert len(all_apps) >= 1
     print(f"PASS: [Direct App Route] GET /api/applications -> {len(all_apps)} total applications")
 
     patched_app = await update_application_status(
         application_id=app_result["id"],
-        status_in=ApplicationStatusUpdate(status="interview")
+        status_in=ApplicationStatusUpdate(status="interview"),
+        current_user=admin_user
     )
     assert patched_app["status"] == "interview"
     print("PASS: [Direct App Route] PATCH /api/applications/:id -> status updated to 'interview'")
 
-    del_app = await delete_application(application_id=app_result["id"])
+    del_app = await delete_application(application_id=app_result["id"], current_user=admin_user)
     assert del_app.status_code == 204
     print("PASS: [Direct App Route] DELETE /api/applications/:id -> 204 No Content")
 

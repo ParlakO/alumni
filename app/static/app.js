@@ -1,23 +1,175 @@
-// Alumni Tracking System Frontend Logic (Week 1 - Week 6 Progression)
+// Alumni Tracking System Frontend Logic (Auth, Roles & Dynamic Navigation)
 let allUsers = [];
 let allJobs = [];
 let allApplications = [];
+let currentUser = null; // { id, name, email, department, role } or null (guest)
 let currentView = 'table'; // 'table' or 'grid'
-let currentMainTab = 'alumni'; // 'alumni', 'jobs', 'applications'
+let currentMainTab = 'jobs'; // default public tab: 'jobs'
+
+function getAuthToken() {
+  return localStorage.getItem('alumni_jwt') || '';
+}
+
+function setAuthToken(token) {
+  if (token) localStorage.setItem('alumni_jwt', token);
+  else localStorage.removeItem('alumni_jwt');
+}
+
+async function authFetch(url, options = {}) {
+  const token = getAuthToken();
+  const headers = Object.assign({}, options.headers || {});
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return fetch(url, Object.assign({}, options, { headers }));
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 });
 
-function initApp() {
+async function initApp() {
   checkApiHealth();
-  loadUsers();
-  loadJobs();
-  loadApplications();
   setupEventListeners();
+  await syncAuthState();
 
   // Periodic health check every 20 seconds
   setInterval(checkApiHealth, 20000);
+}
+
+async function syncAuthState() {
+  try {
+    const res = await authFetch('/api/me');
+    if (res.ok) {
+      currentUser = await res.json();
+      logApiEvent('GET', '/api/me', '200 OK', `${currentUser.name} (${currentUser.role})`);
+    } else {
+      currentUser = null;
+      if (res.status === 401) setAuthToken('');
+    }
+  } catch (err) {
+    currentUser = null;
+  }
+
+  applyRoleNavigation();
+  await loadJobs();
+  if (currentUser) {
+    await loadUsers();
+    await loadApplications();
+  } else {
+    allUsers = [];
+    allApplications = [];
+    document.getElementById('statTotalUsers').textContent = '🔒';
+    document.getElementById('statTotalApps').textContent = '🔒';
+    switchMainTab('jobs');
+  }
+}
+
+function applyRoleNavigation() {
+  const isGuest = !currentUser;
+  const isAdmin = currentUser && currentUser.role === 'admin';
+  const isGraduate = currentUser && currentUser.role === 'graduate';
+
+  document.querySelectorAll('.role-guest-only').forEach(el => {
+    el.style.display = isGuest ? '' : 'none';
+  });
+  document.querySelectorAll('.role-auth-only').forEach(el => {
+    el.style.display = !isGuest ? '' : 'none';
+  });
+  document.querySelectorAll('.role-admin-only').forEach(el => {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+  document.querySelectorAll('.role-graduate-only').forEach(el => {
+    el.style.display = isGraduate ? '' : 'none';
+  });
+
+  const badge = document.getElementById('navUserBadge');
+  if (badge && currentUser) {
+    badge.textContent = `${currentUser.role === 'admin' ? '🛡️' : '🎓'} ${currentUser.name} (${currentUser.role})`;
+  }
+
+  if (isGuest && currentMainTab !== 'jobs') {
+    switchMainTab('jobs');
+  } else {
+    switchMainTab(currentMainTab);
+  }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginSubmitBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setAuthToken(data.token);
+      showToast(`Hoş geldiniz, ${data.user.name} (${data.user.role})!`, 'success');
+      logApiEvent('POST', '/api/login', '200 OK', `Token alındı (${data.user.role})`);
+      closeModal('loginModal');
+      document.getElementById('loginForm').reset();
+      await syncAuthState();
+    } else {
+      showToast(data.error || data.detail || 'Giriş başarısız.', 'error');
+      logApiEvent('POST', '/api/login', `${res.status}`, data.error || data.detail);
+    }
+  } catch (err) {
+    showToast('Sunucu hatası!', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const department = document.getElementById('regDepartment').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const btn = document.getElementById('registerSubmitBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, department, password })
+    });
+    const data = await res.json();
+    if (res.status === 201) {
+      setAuthToken(data.token);
+      showToast(`Kayıt başarılı! Hoş geldiniz, ${data.user.name}.`, 'success');
+      logApiEvent('POST', '/api/register', '201 Created', `${data.user.email} (graduate)`);
+      closeModal('registerModal');
+      document.getElementById('registerForm').reset();
+      await syncAuthState();
+    } else {
+      showToast(data.detail || data.reason || 'Kayıt başarısız.', 'error');
+      logApiEvent('POST', '/api/register', `${res.status}`, data.detail || data.reason);
+    }
+  } catch (err) {
+    showToast('Sunucu hatası!', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function handleLogout() {
+  try {
+    await authFetch('/api/logout', { method: 'POST' });
+  } catch (_) {}
+  setAuthToken('');
+  currentUser = null;
+  showToast('Oturum kapatıldı.', 'info');
+  logApiEvent('POST', '/api/logout', '200 OK', 'Çıkış yapıldı');
+  await syncAuthState();
 }
 
 // ----------------------------------------
@@ -94,13 +246,18 @@ function setupEventListeners() {
       const originalText = seedBtn.innerHTML;
       seedBtn.innerHTML = '🌱 Tohumlanıyor...';
       try {
-        const res = await fetch('/api/seed?count=50', { method: 'POST' });
+        const res = await authFetch('/api/seed?count=50', { method: 'POST' });
         const data = await res.json();
-        showToast(data.message || 'Veritabanı başarıyla tohumlandı!', 'success');
-        logApiEvent('POST', '/api/seed', '200 OK', 'Seed complete');
-        await loadUsers();
-        await loadJobs();
-        await loadApplications();
+        if (!res.ok) {
+          showToast(data.error || data.detail || 'Yetki hatası (Admin gerekli)!', 'error');
+          logApiEvent('POST', '/api/seed', `${res.status}`, data.error || data.detail);
+        } else {
+          showToast(data.message || 'Veritabanı başarıyla tohumlandı!', 'success');
+          logApiEvent('POST', '/api/seed', '200 OK', 'Seed complete');
+          await loadUsers();
+          await loadJobs();
+          await loadApplications();
+        }
       } catch (err) {
         showToast('Tohum verisi eklenirken hata oluştu!', 'error');
         logApiEvent('POST', '/api/seed', 'ERR', err.message);
@@ -221,7 +378,7 @@ async function loadUsers() {
   gridView.style.display = 'none';
 
   try {
-    const res = await fetch('/api/users');
+    const res = await authFetch('/api/users');
     const data = await res.json();
 
     if (res.ok) {
@@ -231,8 +388,7 @@ async function loadUsers() {
       updateUserStats(allUsers);
       filterAndRender();
     } else {
-      showToast('Kullanıcılar yüklenemedi!', 'error');
-      logApiEvent('GET', '/api/users', `${res.status}`, 'Hata');
+      logApiEvent('GET', '/api/users', `${res.status}`, data.error || 'Yetki gerekli');
     }
   } catch (err) {
     showToast('Sunucu ile bağlantı kurulamadı.', 'error');
@@ -288,6 +444,12 @@ function renderTable(users) {
   tbody.innerHTML = '';
 
   users.forEach(user => {
+    const isAdmin = currentUser && currentUser.role === 'admin';
+    const isSelf = currentUser && currentUser.id === user.id;
+    const canEdit = isAdmin || isSelf;
+    const canPostFor = isAdmin || isSelf;
+    const canDelete = isAdmin;
+
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><span class="id-badge">#${user.id}</span></td>
@@ -295,6 +457,7 @@ function renderTable(users) {
         <div class="user-cell">
           <div class="user-avatar">${getInitials(user.name)}</div>
           <span class="user-name-title">${escapeHtml(user.name)}</span>
+          <span class="badge" style="margin-left:0.4rem; font-size:0.7rem;">${escapeHtml(user.role || 'graduate')}</span>
         </div>
       </td>
       <td><a href="mailto:${escapeHtml(user.email)}" class="email-link">${escapeHtml(user.email)}</a></td>
@@ -304,15 +467,9 @@ function renderTable(users) {
           <button class="action-btn" onclick="inspectUser(${user.id})" title="Detay & İlanlar (Include: GET /api/users/:id?include=jobs)">
             Detay
           </button>
-          <button class="action-btn" onclick="openAddJobForUser(${user.id})" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid #6366f1;" title="Bu Mezun İçin İlan Aç (Nested: POST /api/users/:id/jobs)">
-            + İlan
-          </button>
-          <button class="action-btn edit-btn" onclick="openEditModal(${user.id})" title="Düzenle (PUT/PATCH)">
-            Düzenle
-          </button>
-          <button class="action-btn del-btn" onclick="openDeleteModal(${user.id}, '${escapeHtml(user.name)}')" title="Sil (RESTRICT Kuralı)">
-            Sil
-          </button>
+          ${canPostFor ? `<button class="action-btn" onclick="openAddJobForUser(${user.id})" style="background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid #6366f1;" title="İlan Aç (POST /api/users/:id/jobs)">+ İlan</button>` : ''}
+          ${canEdit ? `<button class="action-btn edit-btn" onclick="openEditModal(${user.id})" title="Düzenle (PUT/PATCH)">Düzenle</button>` : ''}
+          ${canDelete ? `<button class="action-btn del-btn" onclick="openDeleteModal(${user.id}, '${escapeHtml(user.name)}')" title="Sil (Admin Only)">Sil</button>` : ''}
         </div>
       </td>
     `;
@@ -392,7 +549,7 @@ async function handleCreateUser(e) {
   saveBtn.disabled = true;
 
   try {
-    const res = await fetch('/api/users', {
+    const res = await authFetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -439,7 +596,7 @@ async function handleUpdateUser(e) {
   saveBtn.disabled = true;
 
   try {
-    const res = await fetch(`/api/users/${userId}`, {
+    const res = await authFetch(`/api/users/${userId}`, {
       method: method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -467,7 +624,7 @@ async function confirmDeleteUser() {
   const userId = document.getElementById('deleteUserId').value;
 
   try {
-    const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+    const res = await authFetch(`/api/users/${userId}`, { method: 'DELETE' });
 
     if (res.status === 204) {
       showToast(`Mezun #${userId} silindi. (204 No Content)`, 'info');
@@ -494,7 +651,7 @@ async function confirmDeleteUser() {
 // Inspect with Include: GET /api/users/:id?include=jobs
 async function inspectUser(userId) {
   try {
-    const res = await fetch(`/api/users/${userId}?include=jobs`);
+    const res = await authFetch(`/api/users/${userId}?include=jobs`);
     const user = await res.json();
 
     if (res.ok) {
@@ -592,6 +749,9 @@ function renderJobsTable(jobs) {
   jobs.forEach(job => {
     const owner = allUsers.find(u => u.id === job.user_id);
     const ownerName = owner ? owner.name : `Mezun #${job.user_id}`;
+    const isAdmin = currentUser && currentUser.role === 'admin';
+    const isGraduate = currentUser && currentUser.role === 'graduate';
+    const canDelete = isAdmin || (currentUser && currentUser.id === job.user_id);
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -603,24 +763,18 @@ function renderJobsTable(jobs) {
         <span style="color: #a5b4fc; font-weight: 600;">🏢 ${escapeHtml(job.company)}</span>
       </td>
       <td>
-        <span class="user-cell" style="cursor: pointer;" onclick="inspectUser(${job.user_id})">
+        <span class="user-cell" style="cursor: pointer;" onclick="${currentUser ? `inspectUser(${job.user_id})` : `openModal('loginModal')`}">
           <span style="color: #93c5fd;">👤 ${escapeHtml(ownerName)}</span>
           <span style="font-size: 0.75rem; color: #64748b; margin-left: 0.3rem;">(#${job.user_id})</span>
         </span>
       </td>
       <td>
-        <button class="action-btn" onclick="openViewApplicantsModal(${job.id}, '${escapeHtml(job.title)}')" style="background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border: 1px solid #10b981;">
-          👥 Başvuranları Gör
-        </button>
+        ${currentUser ? `<button class="action-btn" onclick="openViewApplicantsModal(${job.id}, '${escapeHtml(job.title)}')" style="background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border: 1px solid #10b981;">👥 Başvuranları Gör</button>` : '<span style="color:#64748b; font-size:0.8rem;">Giriş gerekli</span>'}
       </td>
       <td style="text-align: right;">
         <div class="actions-group">
-          <button class="action-btn" onclick="openApplyJobModal(${job.id}, '${escapeHtml(job.title)}', '${escapeHtml(job.company)}')" style="background: rgba(59, 130, 246, 0.2); color: #bfdbfe; border: 1px solid #3b82f6;" title="İlana Başvuru Yap (POST /api/jobs/:id/applications)">
-            ⚡ Başvur
-          </button>
-          <button class="action-btn del-btn" onclick="deleteJob(${job.id})" title="İlanı Sil (DELETE /api/jobs/:id)">
-            Sil
-          </button>
+          ${isGraduate ? `<button class="action-btn" onclick="applyDirectly(${job.id}, '${escapeHtml(job.title)}')" style="background: rgba(59, 130, 246, 0.2); color: #bfdbfe; border: 1px solid #3b82f6;" title="Kendin Adına Başvur (POST /api/jobs/:id/applications)">⚡ Başvur</button>` : ''}
+          ${canDelete ? `<button class="action-btn del-btn" onclick="deleteJob(${job.id})" title="İlanı Sil (DELETE /api/jobs/:id)">Sil</button>` : ''}
         </div>
       </td>
     `;
@@ -629,7 +783,15 @@ function renderJobsTable(jobs) {
 }
 
 function openAddJobModal() {
+  if (!currentUser) {
+    openModal('loginModal');
+    return;
+  }
   populateUserDropdown('jobOwnerSelect');
+  const select = document.getElementById('jobOwnerSelect');
+  if (select && currentUser.role !== 'admin') {
+    select.value = currentUser.id;
+  }
   openModal('addJobModal');
 }
 
@@ -664,7 +826,7 @@ async function handleCreateJob(e) {
   }
 
   try {
-    const res = await fetch(`/api/users/${userId}/jobs`, {
+    const res = await authFetch(`/api/users/${userId}/jobs`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title, company })
@@ -690,7 +852,7 @@ async function deleteJob(jobId) {
   if (!confirm(`İlan #${jobId} silinsin mi? Bağlı başvurular da temizlenecektir.`)) return;
 
   try {
-    const res = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+    const res = await authFetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
     if (res.status === 204) {
       showToast(`İlan #${jobId} silindi.`, 'info');
       logApiEvent('DELETE', `/api/jobs/${jobId}`, '204 No Content', `İlan silindi`);
@@ -716,7 +878,7 @@ async function loadApplications() {
   if (emptyState) emptyState.style.display = 'none';
 
   try {
-    const res = await fetch('/api/applications');
+    const res = await authFetch('/api/applications');
     const apps = await res.json();
 
     if (res.ok) {
@@ -792,22 +954,47 @@ function openApplyJobModal(jobId, jobTitle, jobCompany) {
   openModal('applyJobModal');
 }
 
+// Direct graduate self-application: applicant is derived from JWT on the server
+async function applyDirectly(jobId, jobTitle) {
+  if (!currentUser) {
+    openModal('loginModal');
+    return;
+  }
+  try {
+    const res = await authFetch(`/api/jobs/${jobId}/applications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (res.status === 201) {
+      showToast(`'${jobTitle}' ilanına başvurunuz alındı! (201 Created)`, 'success');
+      logApiEvent('POST', `/api/jobs/${jobId}/applications`, '201 Created', `Self-applied (${currentUser.name})`);
+      loadApplications();
+      loadJobs();
+    } else if (res.status === 409) {
+      showToast('Bu ilana zaten başvurdunuz! (409 Conflict)', 'warning');
+      logApiEvent('POST', `/api/jobs/${jobId}/applications`, '409 Conflict', data.detail || data.error);
+    } else {
+      showToast(data.error || data.detail || 'Başvuru yapılamadı.', 'error');
+      logApiEvent('POST', `/api/jobs/${jobId}/applications`, `${res.status}`, data.error || data.detail);
+    }
+  } catch (err) {
+    showToast('Sunucu hatası!', 'error');
+  }
+}
+
 // Applications Route: POST /api/jobs/:id/applications (Enforces UNIQUE & 409 Conflict)
 async function handleApplyToJob(e) {
   e.preventDefault();
   const jobId = document.getElementById('applyJobId').value;
   const userId = document.getElementById('applicantUserSelect').value;
 
-  if (!userId) {
-    showToast('Lütfen başvuru yapacak mezunu seçin.', 'warning');
-    return;
-  }
-
   try {
-    const res = await fetch(`/api/jobs/${jobId}/applications`, {
+    const res = await authFetch(`/api/jobs/${jobId}/applications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: parseInt(userId, 10) })
+      body: JSON.stringify(userId ? { userId: parseInt(userId, 10) } : {})
     });
     const data = await res.json();
 
@@ -838,7 +1025,7 @@ async function openViewApplicantsModal(jobId, jobTitle) {
   openModal('applicantsModal');
 
   try {
-    const res = await fetch(`/api/jobs/${jobId}/applicants`);
+    const res = await authFetch(`/api/jobs/${jobId}/applicants`);
     const applicants = await res.json();
 
     if (res.ok) {
@@ -868,7 +1055,7 @@ async function openViewApplicantsModal(jobId, jobTitle) {
 // Direct Application PATCH: update status
 async function updateApplicationStatus(appId, newStatus) {
   try {
-    const res = await fetch(`/api/applications/${appId}`, {
+    const res = await authFetch(`/api/applications/${appId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
@@ -890,7 +1077,7 @@ async function deleteApplication(appId) {
   if (!confirm(`Başvuru #${appId} geri çekilsin mi?`)) return;
 
   try {
-    const res = await fetch(`/api/applications/${appId}`, { method: 'DELETE' });
+    const res = await authFetch(`/api/applications/${appId}`, { method: 'DELETE' });
     if (res.status === 204) {
       showToast(`Başvuru #${appId} geri çekildi. (204 No Content)`, 'info');
       logApiEvent('DELETE', `/api/applications/${appId}`, '204 No Content', `Başvuru silindi`);

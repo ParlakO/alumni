@@ -1,4 +1,4 @@
-import os
+import re
 import time
 from datetime import datetime
 from typing import Callable
@@ -6,6 +6,73 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response, JSONResponse, RedirectResponse
 from app.logger import format_terminal_log, log_error_to_file
+from app.auth import extract_token_from_request, decode_access_token
+from app.models import user_model
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    """
+    Auth Middleware ("The Bouncer Checks the Card"):
+    - Reads JWT from `Authorization: Bearer <token>` header or `access_token` cookie.
+    - Attaches `request.state.user` (dict with id, name, email, department, role) or None (guest).
+    - Enforces authentication BEFORE route body validation on protected `/api/*` routes:
+      no card / bad card / expired -> 401 {"error": "login required"} (401, not 400).
+    """
+
+    # Public API routes that guests may call without a token
+    PUBLIC_API_EXACT = {
+        ("GET", "/api/health"),
+        ("GET", "/api/db-status"),
+        ("GET", "/api/test-500"),
+        ("POST", "/api/login"),
+        ("POST", "/api/logout"),
+        ("POST", "/api/register"),
+        ("GET", "/api/jobs"),
+        ("POST", "/api/users"),
+    }
+    PUBLIC_JOB_DETAIL_RE = re.compile(r"^/api/jobs/\d+$")
+
+    @classmethod
+    def _is_public_api_route(cls, method: str, path: str) -> bool:
+        m = method.upper()
+        normalized = path.rstrip("/") or "/"
+        if m == "OPTIONS":
+            return True
+        if (m, normalized) in cls.PUBLIC_API_EXACT:
+            return True
+        if m == "GET" and cls.PUBLIC_JOB_DETAIL_RE.match(normalized):
+            return True
+        return False
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        token = extract_token_from_request(request)
+        current_user = None
+
+        if token and token != "__INVALID_AUTH_HEADER__":
+            claims = decode_access_token(token)
+            if claims:
+                # Refresh from DB so role updates or deleted accounts take effect immediately
+                db_user = user_model.get_by_id(claims["id"])
+                if db_user:
+                    current_user = db_user
+
+        request.state.user = current_user
+
+        path = request.url.path
+        if path.startswith("/api") and not self._is_public_api_route(request.method, path):
+            if current_user is None:
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "status_code": 401,
+                        "error": "login required",
+                        "reason": "login required",
+                        "detail": "login required",
+                        "path": path,
+                    },
+                )
+
+        return await call_next(request)
 
 
 class LoggerMiddleware(BaseHTTPMiddleware):
@@ -58,4 +125,3 @@ class Guardian404Middleware(BaseHTTPMiddleware):
                 )
 
         return response
-

@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+    <h2>👤 Profil Bilgilerim</h2>
+    <span class="badge" style="{% if user.role == 'admin' %}background: rgba(245,158,11,0.18); color: #fcd34d;{% else %}background: rgba(16,185,129,0.18); color: #6ee7b7;{% endif %}">
+      Rol: {{ user.role }} · ID #{{ user.id }}
+    </span>
+  </div>
+
+  <dl>
+    <dt>Ad Soyad</dt><dd>{{ user.name }}</dd>
+    <dt>E-posta</dt><dd>{{ user.email }}</dd>
+    <dt>Bölüm</dt><dd>{{ user.department }}</dd>
+    <dt>Açtığım İlanlar</dt><dd><a href="/my-jobs">{{ jobs_count }} ilan görüntüle →</a></dd>
+    {% if user.role == 'graduate' %}
+    <dt>Başvurularım</dt><dd><a href="/my-applications">{{ apps_count }} başvuru görüntüle →</a></dd>
+    {% endif %}
+  </dl>
+</div>
+
+<div class="card">
+  <h2>✏️ Profilimi Güncelle</h2>
+  <form method="POST" action="/me" class="grid">
+    <label>
+      Ad Soyad
+      <input type="text" name="name" value="{{ user.name }}" required minlength="2">
+    </label>
+    <label>
+      E-posta
+      <input type="email" name="email" value="{{ user.email }}" required>
+    </label>
+    <label>
+      Bölüm
+      <input type="text" name="department" value="{{ user.department }}" required minlength="2">
+    </label>
+    <label>
+      Yeni Parola (Değiştirmek istemiyorsanız boş bırakın)
+      <input type="password" name="password" minlength="6" placeholder="Opsiyonel yeni parola">
+    </label>
+    <div class="full actions">
+      <button type="submit" class="btn btn-primary">Değişiklikleri Kaydet</button>
+      {% if user.role == 'admin' %}
+        <a href="/admin" class="btn btn-warning">🛡️ Admin Paneline Git</a>
+      {% endif %}
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -88,13 +88,16 @@ Sisteme kayıtlı mezunları temsil eder.
 | **`name`** | `String` | Evet | - | `"Ada"` | Mezunun ad ve soyadı. |
 | **`email`** | `String` | Evet | `Unique` | `"ada@iu.edu.tr"` | Mezunun iletişim e-posta adresi. |
 | **`department`** | `String` | Evet | - | `"Computer Engineering"` | Mezun olunan üniversite bölümü. |
+| **`password_hash`** | `String(255)` | Evet | - | `"$2b$12$..."` | `bcrypt` (hash + salt) ile şifrelenmiş parola özeti. API yanıtlarında **asla** dönülmez. |
+| **`role`** | `String(30)` | Evet | - | `"graduate"` | Kullanıcının sistem rolü (`graduate` veya `admin`). Varsayılan: `graduate`. |
 
 **Örnek Veri Seti:**
-| id | name | email | department |
-|:---:|:---|:---|:---|
-| 1 | Ada | `ada@iu.edu.tr` | Computer Engineering |
-| 2 | Can | `can@iu.edu.tr` | MIS |
-| 3 | Elif | `elif@iu.edu.tr` | Data Science |
+| id | name | email | department | role |
+|:---:|:---|:---|:---|:---:|
+| 1 | Ada | `ada@iu.edu.tr` | Computer Engineering | `graduate` |
+| 2 | Can | `can@iu.edu.tr` | MIS | `graduate` |
+| 3 | Elif | `elif@iu.edu.tr` | Data Science | `graduate` |
+| 4 | Osman Parlak | `osman@iu.edu.tr` | Yönetim Bilişim Sistemleri | `admin` |
 
 ---
 
@@ -525,3 +528,96 @@ Her gelen isteği terminale şu formatta yazdırır:
 ### 9.4. Geçersiz İstekler (Invalid Requests & Validation)
 - İstek gövdesinde eksik alan (`title`, `company` eksikliği) veya karakter sınır aşımı (`title > 120`) durumunda Pydantic doğrulaması tetiklenir ve istemciye 400 Bad Request statüsü ile birlikte hatanın sebebini belirten açıklama döner.
 
+
+
+---
+
+## 10. Kimlik Doğrulama ve Yetkilendirme Mimarisi (Authentication & Authorization)
+
+> **Temel İlke:** *"The rule is written once — the button is not the rule."*
+> Arayüzdeki butonları rol bazlı gizlemek yalnızca kullanıcı deneyimi içindir; gerçek güvenlik ve yetkilendirme kuralı her zaman sunucu tarafında (**Auth Middleware** ve **Controller** katmanında) tek bir merkezden uygulanır.
+
+### 10.1. Sistem Rolleri (Users & Roles)
+
+Sistemde üç erişim düzeyi (rol) tanımlıdır:
+
+| Rol | Açıklama | Kimlik Doğrulama |
+|:---|:---|:---:|
+| **`guest`** | Oturum açmamış (anonim) ziyaretçi. Yalnızca herkese açık iş ilanlarını görüntüleyebilir ve sisteme kayıt (`register`) olabilir. | Hayır |
+| **`graduate`** | Sisteme kayıtlı mezun kullanıcı (varsayılan rol). Mezun listesini görebilir, yalnızca kendi profilini düzenleyebilir, kendi adına iş ilanı açabilir ve ilanlara kendi adına başvurabilir. | Evet (JWT) |
+| **`admin`** | Sistem yöneticisi. Admin paneline (`/admin`) erişebilir, tüm kullanıcıları ve rolleri yönetebilir, ilanları ve başvuruları düzenleyebilir/silebilir. İlanlara başvurmaz (`apply = no`). | Evet (JWT) |
+
+---
+
+### 10.2. Yetki Matrisi (Who May Do What)
+
+| İşlem (Action) | Endpoint | `guest` | `graduate` | `admin` |
+|:---|:---|:---:|:---:|:---:|
+| **İş ilanlarını gör** (`see job postings`) | `GET /api/jobs`, `GET /api/jobs/:id` | **yes** | **yes** | **yes** |
+| **Kullanıcıları gör** (`see users`) | `GET /api/users`, `GET /api/users/:id` | **no** (`401`) | **yes** | **yes** |
+| **Kayıt ol** (`sign up`) | `POST /api/register`, `POST /api/users` | **yes** | **no** (`403`) | **yes** |
+| **Profil değiştir** (`change a profile`) | `PUT / PATCH /api/users/:id` | **no** (`401`) | **own** (`403` başkası) | **yes** |
+| **Kullanıcı sil** (`delete a user`) | `DELETE /api/users/:id` | **no** (`401`) | **no** (`403`) | **yes** |
+| **İş ilanı aç** (`post a job`) | `POST /api/users/:id/jobs` | **no** (`401`) | **own** (`403` başkası) | **yes** |
+| **İlana başvur** (`apply to a job`) | `POST /api/jobs/:id/applications` | **no** (`401`) | **self** (body `userId` yok sayılır) | **no** (`403`) |
+| **Admin paneli & rol yönetimi** | `GET /admin`, `/api/admin/*`, `POST /api/seed` | **no** (`401`) | **no** (`403`) | **yes** |
+
+---
+
+### 10.3. Parola Güvenliği (`bcrypt` Hash + Salt)
+
+- Kullanıcı parolaları veritabanında **asla düz metin (plain text)** olarak saklanmaz.
+- Her parola, `bcrypt` kütüphanesi ile rastgele üretilen tuz (**salt**) eklenerek hash'lenir (`$2b$12$...`).
+- Aynı parolayı seçen iki farklı kullanıcının veritabanındaki hash değerleri birbirinden tamamen farklıdır.
+- Giriş (`POST /api/login`) sırasında gelen parola, `bcrypt.checkpw()` fonksiyonu ile doğrulanır (asla `==` kullanılmaz).
+- `GET /api/users` ve diğer tüm API yanıtları **`password_hash` alanını asla döndürmez**.
+
+---
+
+### 10.4. Oturum Açma ve JWT (Log In, Get a Card)
+
+- **Endpoint:** `POST /api/login` (`{ "email": "...", "password": "..." }`)
+- **Başarılı Giriş (`200 OK`):** `{ "token": "<JWT>", "user": { "id", "name", "email", "department", "role" } }` döner ve tarayıcı oturumu için `HttpOnly` çerez (`access_token`) atanır.
+- **Hatalı Parola veya Bilinmeyen E-posta (`401 Unauthorized`):** Her iki durumda da aynı hata mesajı döner: `{ "error": "invalid email or password" }`.
+- **JWT Payload:** `sub` (user id), `name`, `email`, `role`, `iat`, `exp` bilgilerini içerir. Payload herkes tarafından okunabilir olduğu için **hiçbir gizli veri veya parola hash'i içermez**.
+- **Kimlik Sorgulama:** `GET /api/me` ➔ `{ "id", "name", "email", "department", "role" }`.
+- **Çıkış Yapma:** `POST /api/logout` çerezi temizler ve istemci tarafındaki token silinir.
+
+---
+
+### 10.5. Auth Middleware ("The Bouncer Checks the Card") & HTTP Durum Kodları
+
+```
+[Request] ➔ [Logger] ➔ [404 Guardian] ➔ [Method Override] ➔ [AuthMiddleware] ➔ [Route / Controller]
+                                                                  │
+                                             ┌────────────────────┴────────────────────┐
+                                       [Geçerli Kart]                     [Kart Yok / Geçersiz / Süresi Dolmuş]
+                                             │                                         │
+                                    request.state.user                    401 { "error": "login required" }
+                                      ➔ Route'a geçer                     (Validasyondan ÖNCE: 401, not 400!)
+```
+
+- **Header:** `Authorization: Bearer <token>` (HTML sayfaları için ek olarak `access_token` çerezi desteklenir).
+- **Kart Kontrolü Validasyondan Önce Gelir:** Token olmadan boş gövdeyle korunan bir rotaya istek atıldığında `400 Bad Request` yerine **`401 Unauthorized`** döner.
+- **`401 Unauthorized`:** *"I do not know who you are"* (Kimlik doğrulanmadı / token eksik veya geçersiz).
+- **`403 Forbidden`:** *"I know who you are, and the answer is no"* (Kimlik doğrulandı ancak rol veya sahiplik yetkisi yetersiz).
+
+---
+
+### 10.6. Sahiplik Kuralları (Yours, Not Someone Else's)
+
+1. **İlana Başvurma (`POST /api/jobs/:id/applications`):** İstek gövdesinde başka bir `userId` gönderilse bile yok sayılır; başvuran kullanıcı daima oturum açmış olan `graduate` kullanıcısıdır.
+2. **Başkası Adına İlan Açma (`POST /api/users/:id/jobs`):** `graduate` kullanıcı yalnızca kendi `:id` adresi için ilan açabilir; başka bir kullanıcının `:id` değeri için **`403 { "error": "not allowed" }`** döner.
+3. **Başkasının Profilini Düzenleme / Silme:** `graduate` kullanıcı başka bir kullanıcının profilini değiştiremez (`403`) ve hiçbir kullanıcıyı silemez (`403`). Yalnızca `admin` tüm kullanıcıları düzenleyebilir ve silebilir.
+
+---
+
+### 10.7. Dinamik Navigasyon ve Kullanıcıya Özel Sayfalar
+
+- **Dinamik Menü (Role-Based Navigation):** Üst menü ve portal sekmeleri oturum açmış kullanıcının rolüne (`guest`, `graduate`, `admin`) göre dinamik olarak oluşturulur.
+- **Kullanıcıya Özel Sayfalar (User-Specific Pages):**
+  - `/register` ve `/login`: Kayıt olma ve giriş yapma sayfaları.
+  - `/me`: Giriş yapmış kullanıcının kendi profilini görüntülediği ve güncellediği sayfa.
+  - `/my-jobs`: Kullanıcının kendi açtığı iş ilanlarını ve bu ilanlara yapılan başvuruları yönettiği sayfa.
+  - `/my-applications`: Kullanıcının kendi yaptığı iş başvurularını takip ettiği ve geri çekebildiği sayfa.
+  - `/admin`: Yalnızca `admin` rolündeki kullanıcıların erişebildiği, kullanıcı/rol/ilan/başvuru manipülasyonu sunan yönetim paneli.

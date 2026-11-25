@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 0 auto;">
+  <h2>🔑 Sisteme Giriş Yap (Login)</h2>
+  <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.25rem;">
+    E-posta ve parolanızla giriş yaparak rolünüze uygun sayfalara erişin.
+  </p>
+
+  <form method="POST" action="/login" class="grid">
+    <input type="hidden" name="next_url" value="{{ next_url or '' }}">
+    <label class="full">
+      E-posta Adresi
+      <input type="email" name="email" value="{{ form.email or '' }}" required placeholder="osman@iu.edu.tr veya ada@iu.edu.tr">
+    </label>
+    <label class="full">
+      Parola
+      <input type="password" name="password" required placeholder="••••••">
+    </label>
+    <div class="full actions" style="margin-top: 0.5rem;">
+      <button type="submit" class="btn btn-primary">Giriş Yap</button>
+      <a href="/register" class="btn btn-light">Yeni Hesap Oluştur</a>
+    </div>
+  </form>
+
+  <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle); font-size: 0.82rem; color: var(--text-muted);">
+    <strong>Demo Hesaplar:</strong>
+    <ul style="margin-top: 0.4rem; padding-left: 1.2rem; line-height: 1.7;">
+      <li>Admin: <code>osman@iu.edu.tr</code> / <code>admin123</code></li>
+      <li>Graduate: <code>ada@iu.edu.tr</code> / <code>secret123</code></li>
+      <li>Graduate: <code>can@iu.edu.tr</code> / <code>secret123</code></li>
+    </ul>
+  </div>
+</div>
+{% endblock %}
